@@ -2,9 +2,9 @@ services:
   - type: web
     name: diabetesbot
     env: docker
-    region: frankfurt  # можно поменять
-    plan: free         # бесплатный план
+    plan: free
+    region: frankfurt
+    ports:
+      - port: 10000
+        protocol: http
     autoDeploy: true
-    buildCommand: ""
-    startCommand: ""
-    healthCheckPath: "/"
