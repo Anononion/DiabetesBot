@@ -1,32 +1,16 @@
-# -------------------------------------------------
-# 1) Build stage
-# -------------------------------------------------
-FROM mcr.microsoft.comdotnetsdk8.0 AS build
+# build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
 
-WORKDIR app
+COPY *.csproj .
+RUN dotnet restore
 
-# копируем .csproj
-COPY .csproj .
-COPY DiabetesBot .DiabetesBot
-
-RUN dotnet restore .DiabetesBotDiabetesBot.csproj
-
-# копируем весь проект
 COPY . .
+RUN dotnet publish -c Release -o out
 
-RUN dotnet publish .DiabetesBotDiabetesBot.csproj -c Release -o apppublish
+# runtime
+FROM mcr.microsoft.com/dotnet/runtime:8.0
+WORKDIR /app
+COPY --from=build /app/out .
 
-# -------------------------------------------------
-# 2) Runtime stage
-# -------------------------------------------------
-FROM mcr.microsoft.comdotnetruntime8.0
-
-WORKDIR app
-
-COPY --from=build apppublish .
-
-# Render установит PORT, но Telegram polling его игнорирует. Но переменная нужна.
-ENV ASPNETCORE_URLS=http+$PORT
-
-# Запуск приложения
-ENTRYPOINT [dotnet, DiabetesBot.dll]
+ENTRYPOINT ["dotnet", "DiabetesBot.dll"]
