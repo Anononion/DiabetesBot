@@ -265,26 +265,35 @@ public class CommandHandler
               "🧑‍💻 *Разработчик:* @Batyr_dot_bat\n";
 
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
-
+    
         string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
 
-        // Фото 1 — МЕД ЭКСПЕРТ
-        await _bot.SendPhoto(
-            chatId,
-            InputFile.FromFile(Path.Combine(baseDir, "author_medexpert.jpg")),
-            caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
-            cancellationToken: ct
-        );
+        // Фото 1 — мед эксперт
+        string photoMed = Path.Combine(baseDir, "author_medexpert.jpg");
+        await using (var fs = File.OpenRead(photoMed))
+        {
+            await _bot.SendPhoto(
+                chatId,
+                new InputFileStream(fs, "author_medexpert.jpg"),
+                caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
+                cancellationToken: ct
+            );
+        }
 
-    // Фото 2 — РАЗРАБОТЧИК
-        await _bot.SendPhoto(
-            chatId,
-            InputFile.FromFile(Path.Combine(baseDir, "author_dev.jpg")),
-            caption: kz ? "Жасаушы" : "Разработчик",
-            cancellationToken: ct
-        );
+    // Фото 2 — разработчик
+        string photoDev = Path.Combine(baseDir, "author_dev.jpg");
+        await using (var fs = File.OpenRead(photoDev))
+        {
+            await _bot.SendPhoto(
+                chatId,
+                new InputFileStream(fs, "author_dev.jpg"),
+                caption: kz ? "Жасаушы" : "Разработчик",
+                cancellationToken: ct
+            );
+        }
     }
 }
+
 
 
 
