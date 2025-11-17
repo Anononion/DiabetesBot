@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="Data\users\foods.json" />
     <None Remove="Data\users\food_categories.json" />
     <None Remove="Data\users\lang_kk.json" />
@@ -41,3 +45,4 @@
   </ItemGroup>
 
 </Project>
+
