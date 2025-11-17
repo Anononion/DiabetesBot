@@ -75,18 +75,6 @@ public class BotService
     // ====================================================================
     //  УСТАНОВКА ВЕБХУКА (НЕОБЯЗАТЕЛЬНО, НО МОЖНО ВЫЗВАТЬ ИЗВНЕ)
     // ====================================================================
-    public async Task SetWebhookAsync(string url)
-    {
-        try
-        {
-            Logger.Info($"[BOT] Устанавливаю webhook: {url}");
-            await _bot.SetWebhook(url);
-        }
-        catch (Exception ex)
-        {
-            Logger.Error("[BOT] Ошибка при установке webhook", ex);
-        }
-    }
 
     public async Task ProcessUpdate(Update update)
 {
@@ -120,4 +108,5 @@ public async Task SetWebhookAsync(string url)
 }
 
 }
+
 
