@@ -8,56 +8,38 @@ using Telegram.Bot.Types;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DI: регистрируем BotService как singleton
-builder.Services.AddSingleton<BotService>(sp =>
-{
-    string? token = Environment.GetEnvironmentVariable("BOT_TOKEN");
+// Загружаем .env (если нужен)
+var env = new EnvConfigService();
+env.LoadAndDecryptEnv();
 
-    if (string.IsNullOrEmpty(token))
-        throw new Exception("BOT_TOKEN environment variable missing");
+// токен
+string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
+if (string.IsNullOrEmpty(botToken))
+    throw new Exception("BOT_TOKEN environment variable missing");
 
-    return new BotService(token);
-});
+// Регистрируем BotService как singleton
+builder.Services.AddSingleton(new BotService(botToken));
 
 var app = builder.Build();
 
-// Webhook endpoint
+// ===============================
+// Webhook Endpoint
+// ===============================
 app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string token) =>
 {
-    // фильтрация запросов по токену
-    if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
+    string? realToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
+
+    if (string.IsNullOrEmpty(realToken) || token != realToken)
         return Results.Unauthorized();
 
-    var update = await ctx.Request.ReadFromJsonAsync<Update>();
+    Update? update = await ctx.Request.ReadFromJsonAsync<Update>();
     if (update != null)
         await bot.HandleWebhookAsync(update);
 
     return Results.Ok();
 });
 
+// ===============================
+// Запуск приложения
+// ===============================
 app.Run();
-using DiabetesBot;
-using DiabetesBot.Services;
-using DiabetesBot.Utils;
-
-internal class Program
-{
-    private static async Task Main()
-    {
-        Logger.Info("Starting DiabetesBot...");
-
-        var env = new EnvConfigService();
-        env.LoadAndDecryptEnv();  
-
-        string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
-        if (string.IsNullOrEmpty(botToken))
-        {
-            Logger.Error("BOT_TOKEN not found", new Exception("Missing token"));
-            return;
-        }
-
-        var bot = new BotService(botToken);
-        await bot.StartAsync();
-    }
-}
-
