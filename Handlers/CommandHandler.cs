@@ -254,45 +254,53 @@ public class CommandHandler
     public async Task ShowAuthorsAsync(long chatId, long userId, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(userId);
-        bool kz = user.Language == "kk";
+        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
 
-        string text = kz
-            ? "👤 *Авторлар*\n\n" +
-              "🩺 *Медициналық сарапшы:* @Adiya_ua\n" +
-              "🧑‍💻 *Жасаушы:* @Batyr_dot_bat\n"
-            : "👤 *Авторы*\n\n" +
-              "🩺 *Медицинский эксперт:* @Adiya_ua\n" +
-              "🧑‍💻 *Разработчик:* @Batyr_dot_bat\n";
-
-        await _bot.SendMessage(chatId, text, cancellationToken: ct);
-    
         string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
 
-        // Фото 1 — мед эксперт
-        string photoMed = Path.Combine(baseDir, "author_medexpert.jpg");
-        await using (var fs = File.OpenRead(photoMed))
+        string medicPath = Path.Combine(baseDir, "Medic.jpg");
+        string devPath = Path.Combine(baseDir, "Dev.jpg");
+
+        // --------- Тексты ---------
+        string medicCaption = lang == "kk"
+            ? "👩‍⚕️ *Медициналық сарапшы*\n\nДенсаулық сақтау саласында 12 жылдан астам тәжірибесі бар дәрігер. Қант диабеті бойынша пациенттерге көмек көрсетуге маманданған."
+            : "👩‍⚕️ *Медицинский эксперт*\n\nВрач с более чем 12 годами опыта. Специализация — работа с пациентами с сахарным диабетом.";
+
+        string devCaption = lang == "kk"
+            ? "👨‍💻 *Қосымша әзірлеушісі*\n\nБот идеясын жасаушы және техникалық функционалды жүзеге асырушы."
+            : "👨‍💻 *Разработчик приложения*\n\nАвтор идеи и разработчик технического функционала бота.";
+
+        // --------- Отправляем фото эксперта ---------
+        using (var stream = System.IO.File.OpenRead(medicPath))
         {
+            var inputFile = new InputFileStream(stream, "Medic.jpg");
             await _bot.SendPhoto(
-                chatId,
-                new InputFileStream(fs, "author_medexpert.jpg"),
-                caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
+                chatId: chatId,
+                photo: inputFile,
+                caption: medicCaption,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: ct
             );
         }
 
-    // Фото 2 — разработчик
-        string photoDev = Path.Combine(baseDir, "author_dev.jpg");
-        await using (var fs = File.OpenRead(photoDev))
+        // --------- Отправляем фото разработчика ---------
+        using (var stream = System.IO.File.OpenRead(devPath))
         {
+            var inputFile = new InputFileStream(stream, "Dev.jpg");
             await _bot.SendPhoto(
-                chatId,
-                new InputFileStream(fs, "author_dev.jpg"),
-                caption: kz ? "Жасаушы" : "Разработчик",
+                chatId: chatId,
+                photo: inputFile,
+                caption: devCaption,
+                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
                 cancellationToken: ct
             );
         }
+
+        Logger.Info("[CMD] Authors displayed");
     }
+
 }
+
 
 
 
