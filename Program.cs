@@ -8,6 +8,7 @@ using Telegram.Bot.Types;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// DI — BotService
 builder.Services.AddSingleton<BotService>(sp =>
 {
     string? token = Environment.GetEnvironmentVariable("BOT_TOKEN");
@@ -19,6 +20,7 @@ builder.Services.AddSingleton<BotService>(sp =>
 
 var app = builder.Build();
 
+// Webhook endpoint
 app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string token) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
@@ -31,13 +33,17 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     return Results.Ok();
 });
 
-// register webhook on start
+// Register webhook on start
 app.Lifetime.ApplicationStarted.Register(async () =>
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
     var bot = app.Services.GetRequiredService<BotService>();
-    await bot.SetWebhookAsync($"https://diacare-2x9i.onrender.com/webhook/{token}");
+
+    // ВАЖНО! URL должен совпадать с Render!
+    string webhookUrl = $"https://diacare-2x9i.onrender.com/webhook/{token}";
+
+    await bot.SetWebhookAsync(webhookUrl);
+    Logger.Info($"Webhook registered: {webhookUrl}");
 });
 
 app.Run();
-
