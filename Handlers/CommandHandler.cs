@@ -268,15 +268,20 @@ public class CommandHandler
 
         string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
 
-        await _bot.SendPhotoAsync(chatId,
-            new Telegram.Bot.Types.InputFiles.InputOnlineFile(Path.Combine(baseDir, "author_medexpert.jpg")),
+        await _bot.SendPhotoAsync(
+            chatId,
+            new InputFile(Path.Combine(baseDir, "author_medexpert.jpg")),
             caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
-            cancellationToken: ct);
-    
-        await _bot.SendPhotoAsync(chatId,
-            new Telegram.Bot.Types.InputFiles.InputOnlineFile(Path.Combine(baseDir, "author_dev.jpg")),
+            cancellationToken: ct
+        );
+
+        await _bot.SendPhotoAsync(
+            chatId,
+            new InputFile(Path.Combine(baseDir, "author_dev.jpg")),
             caption: kz ? "Жасаушы" : "Разработчик",
-            cancellationToken: ct);
+            cancellationToken: ct
+        );
     }
 }
+
 
