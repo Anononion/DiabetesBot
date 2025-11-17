@@ -53,13 +53,13 @@ public class DiabetesSchoolModule
 
             Logger.Info($"[DS] RU path: {ruPath}, Exists={System.IO.File.Exists(ruPath)}");
             Logger.Info($"[DS] KK path: {kkPath}, Exists={System.IO.File.Exists(kkPath)}");
-␊
+
             if (System.IO.File.Exists(ruPath))
-            {␊
+            {
                 var json = JsonSerializer.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(ruPath));
                 if (json != null && json.ContainsKey("ds.lessons"))␊
-                {␊
-                    _lessonsRu =␊
+                {
+                    _lessonsRu =
                         JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
                             json["ds.lessons"].ToString()!
                         )!;
@@ -68,7 +68,7 @@ public class DiabetesSchoolModule
             }
 
             if (System.IO.File.Exists(kkPath))
-            {␊
+            {
                 var json = JsonSerializer.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(kkPath));
                 if (json != null && json.ContainsKey("ds.lessons"))
                 {
@@ -233,4 +233,5 @@ public class DiabetesSchoolModule
         Logger.Warn($"[DS] Неизвестный callback: {data}");
     }
 }
+
 
