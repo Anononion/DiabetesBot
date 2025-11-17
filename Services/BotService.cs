@@ -87,4 +87,37 @@ public class BotService
             Logger.Error("[BOT] Ошибка при установке webhook", ex);
         }
     }
+
+    public async Task ProcessUpdate(Update update)
+{
+    try
+    {
+        // Message
+        if (update.Message != null)
+        {
+            await _commandHandler.HandleMessageAsync(update.Message, default);
+            return;
+        }
+
+        // Callback
+        if (update.CallbackQuery != null)
+        {
+            await _callbackHandler.HandleAsync(update.CallbackQuery, default);
+            return;
+        }
+    }
+    catch (Exception ex)
+    {
+        Logger.Error("ProcessUpdate error", ex);
+    }
 }
+
+public async Task SetWebhookAsync(string url)
+{
+    await _bot.DeleteWebhookAsync();
+    await _bot.SetWebhookAsync(url);
+    Logger.Info($"Webhook set to: {url}");
+}
+
+}
+
