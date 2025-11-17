@@ -1,4 +1,4 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using DiabetesBot.Handlers;
 using DiabetesBot.Services;
@@ -17,16 +17,16 @@ public class BotService
     {
         _bot = new TelegramBotClient(token);
 
-        // ==== ИНИЦИАЛИЗАЦИЯ СЕРВИСОВ ====
+        // Сервисы
         var storage = new JsonStorageService();
         var state = new UserStateService(storage);
 
-        // ==== МОДУЛИ ====
+        // Модули
         var glucose = new GlucoseModule(_bot, state, storage);
         var bu = new BreadUnitsModule(_bot, state, storage);
         var school = new DiabetesSchoolModule(_bot, state, storage);
 
-        // ==== HANDLERS ====
+        // Handlers
         _callbackHandler = new CallbackHandler(_bot, state, storage, glucose, bu, school);
         _commandHandler = new CommandHandler(_bot, state, storage, glucose, bu, school, _callbackHandler);
 
@@ -35,36 +35,32 @@ public class BotService
         Logger.Info("[BOT] BotService создан");
     }
 
-    // ====================================================================
-    //  ОБРАБОТКА АПДЕЙТОВ ОТ ВЕБХУКА
-    // ====================================================================
-    public async Task HandleUpdateAsync(Update update)
+    // ================================================================
+    //         Обработка обновлений от ВЕБ-ХУКА (единственный метод)
+    // ================================================================
+    public async Task HandleWebhookAsync(Update update)
     {
         try
         {
             if (update.Message is not null)
             {
-                var m = update.Message;
-                Logger.Info($"[BOT] Update: Message chatId={m.Chat.Id}, text='{m.Text}'");
-
-                await _commandHandler.HandleMessageAsync(m, CancellationToken.None);
-
-                Logger.Info("[BOT] Message обработано");
+                await _commandHandler.HandleMessageAsync(
+                    update.Message,
+                    CancellationToken.None
+                );
                 return;
             }
 
             if (update.CallbackQuery is not null)
             {
-                var cb = update.CallbackQuery;
-                Logger.Info($"[BOT] Update: CallbackQuery userId={cb.From.Id}, data='{cb.Data}'");
-
-                await _callbackHandler.HandleAsync(cb, CancellationToken.None);
-
-                Logger.Info("[BOT] Callback обработано");
+                await _callbackHandler.HandleAsync(
+                    update.CallbackQuery,
+                    CancellationToken.None
+                );
                 return;
             }
 
-            Logger.Info("[BOT] Неизвестный тип апдейта → игнор");
+            Logger.Info("[BOT] Неизвестный апдейт → игнор");
         }
         catch (Exception ex)
         {
@@ -72,41 +68,13 @@ public class BotService
         }
     }
 
-    // ====================================================================
-    //  УСТАНОВКА ВЕБХУКА (НЕОБЯЗАТЕЛЬНО, НО МОЖНО ВЫЗВАТЬ ИЗВНЕ)
-    // ====================================================================
-
-    public async Task ProcessUpdate(Update update)
-{
-    try
+    // ================================================================
+    //                     Установка вебхука
+    // ================================================================
+    public async Task SetWebhookAsync(string url)
     {
-        // Message
-        if (update.Message != null)
-        {
-            await _commandHandler.HandleMessageAsync(update.Message, default);
-            return;
-        }
-
-        // Callback
-        if (update.CallbackQuery != null)
-        {
-            await _callbackHandler.HandleAsync(update.CallbackQuery, default);
-            return;
-        }
-    }
-    catch (Exception ex)
-    {
-        Logger.Error("ProcessUpdate error", ex);
+        await _bot.DeleteWebhookAsync();
+        await _bot.SetWebhookAsync(url);
+        Logger.Info($"Webhook set to: {url}");
     }
 }
-
-public async Task SetWebhookAsync(string url)
-{
-    await _bot.DeleteWebhookAsync();
-    await _bot.SetWebhookAsync(url);
-    Logger.Info($"Webhook set to: {url}");
-}
-
-}
-
-
