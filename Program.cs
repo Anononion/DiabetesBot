@@ -4,23 +4,29 @@ using DiabetesBot.Utils;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Telegram.Bot.Serialization;    // <-- Новый неймспейс
 using Telegram.Bot.Types;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DI — BotService
 builder.Services.AddSingleton<BotService>(sp =>
 {
     string? token = Environment.GetEnvironmentVariable("BOT_TOKEN");
     if (string.IsNullOrEmpty(token))
         throw new Exception("BOT_TOKEN missing");
+
     return new BotService(token);
 });
 
+// System.Text.Json options for Telegram updates
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,  // важно!
+    PropertyNameCaseInsensitive = true,
+};
+
 var app = builder.Build();
 
-// Webhook endpoint
 app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string token) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
@@ -29,20 +35,16 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     using var reader = new StreamReader(ctx.Request.Body);
     string raw = await reader.ReadToEndAsync();
 
-    // ---- ВАЖНО: правильная десериализация Telegram Update ----
-    var update = TelegramBotSerializer.Instance.Deserialize<Update>(raw);
+    Update? update = JsonSerializer.Deserialize<Update>(raw, jsonOptions);
 
     if (update != null)
         await bot.HandleWebhookAsync(update);
     else
-        Logger.Warn("[WEBHOOK] Update == null — не удалось распарсить");
+        Logger.Warn("[WEBHOOK] Update == null — parse error");
 
     return Results.Ok();
 });
 
-// ===============================================
-// Webhook registration
-// ===============================================
 async Task RegisterWebhook()
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
