@@ -36,68 +36,55 @@ public class BotService
     }
 
     // ====================================================================
-    //  ЗАПУСК БОТА
+    //  ОБРАБОТКА АПДЕЙТОВ ОТ ВЕБХУКА
     // ====================================================================
-    public async Task StartAsync()
-    {
-        Logger.Info("[BOT] Запуск StartAsync");
-
-        _bot.StartReceiving(
-            HandleUpdateAsync,
-            HandleErrorAsync
-        );
-
-        Logger.Info("Bot started. Waiting for updates...");
-
-        await Task.Delay(-1);
-    }
-
-    // ====================================================================
-    //  ОБРАБОТКА АПДЕЙТОВ
-    // ====================================================================
-    private async Task HandleUpdateAsync(ITelegramBotClient bot, Update update, CancellationToken ct)
+    public async Task HandleUpdateAsync(Update update)
     {
         try
         {
-            // --- Сообщение ---
             if (update.Message is not null)
             {
                 var m = update.Message;
-                Logger.Info($"[BOT] Update: Message от chatId={m.Chat.Id}, text='{m.Text}'");
+                Logger.Info($"[BOT] Update: Message chatId={m.Chat.Id}, text='{m.Text}'");
 
-                await _commandHandler.HandleMessageAsync(m, ct);
+                await _commandHandler.HandleMessageAsync(m, CancellationToken.None);
 
-                Logger.Info("[BOT] Update: Message обработано CommandHandler");
+                Logger.Info("[BOT] Message обработано");
                 return;
             }
 
-            // --- Callback ---
             if (update.CallbackQuery is not null)
             {
                 var cb = update.CallbackQuery;
-                Logger.Info($"[BOT] Update: CallbackQuery от userId={cb.From.Id}, data='{cb.Data}'");
+                Logger.Info($"[BOT] Update: CallbackQuery userId={cb.From.Id}, data='{cb.Data}'");
 
-                await _callbackHandler.HandleAsync(cb, ct);
+                await _callbackHandler.HandleAsync(cb, CancellationToken.None);
 
-                Logger.Info("[BOT] Update: CallbackQuery обработано CallbackHandler");
+                Logger.Info("[BOT] Callback обработано");
                 return;
             }
 
-            // --- Неизвестный апдейт ---
-            Logger.Info("[BOT] Update: неизвестный тип апдейта, игнорируем");
+            Logger.Info("[BOT] Неизвестный тип апдейта → игнор");
         }
         catch (Exception ex)
         {
-            Logger.Error("[BOT] Ошибка в HandleUpdateAsync", ex);
+            Logger.Error("[BOT] Ошибка обработки апдейта", ex);
         }
     }
 
     // ====================================================================
-    //  ОШИБКИ TELEGRAM BOT API
+    //  УСТАНОВКА ВЕБХУКА (НЕОБЯЗАТЕЛЬНО, НО МОЖНО ВЫЗВАТЬ ИЗВНЕ)
     // ====================================================================
-    private Task HandleErrorAsync(ITelegramBotClient bot, Exception ex, CancellationToken ct)
+    public async Task SetWebhookAsync(string url)
     {
-        Logger.Error("[BOT] Telegram polling error", ex);
-        return Task.CompletedTask;
+        try
+        {
+            Logger.Info($"[BOT] Устанавливаю webhook: {url}");
+            await _bot.SetWebhook(url);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("[BOT] Ошибка при установке webhook", ex);
+        }
     }
 }
