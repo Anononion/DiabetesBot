@@ -35,7 +35,7 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     using var reader = new StreamReader(ctx.Request.Body);
     string raw = await reader.ReadToEndAsync();
 
-    Update? update = JsonSerializer.Deserialize<Update>(raw, jsonOptions);
+    Update? update = Newtonsoft.Json.JsonConvert.DeserializeObject<Update>(raw);
 
     if (update != null)
         await bot.HandleWebhookAsync(update);
