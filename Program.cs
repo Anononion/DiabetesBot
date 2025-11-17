@@ -1,21 +1,24 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+using DiabetesBot;
+using DiabetesBot.Services;
+using DiabetesBot.Utils;
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+internal class Program
+{
+    private static async Task Main()
+    {
+        Logger.Info("Starting DiabetesBot...");
 
-    <EnableDefaultContentItems>false</EnableDefaultContentItems>
-  </PropertyGroup>
+        var env = new EnvConfigService();
+        env.LoadAndDecryptEnv();  
 
-  <ItemGroup>
-    <PackageReference Include="Telegram.Bot" Version="22.0.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="SkiaSharp" Version="2.88.6" />
-  </ItemGroup>
+        string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
+        if (string.IsNullOrEmpty(botToken))
+        {
+            Logger.Error("BOT_TOKEN not found", new Exception("Missing token"));
+            return;
+        }
 
-  <ItemGroup>
-    <Content Include="Data/**/*" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-
-</Project>
+        var bot = new BotService(botToken);
+        await bot.StartAsync();
+    }
+}
