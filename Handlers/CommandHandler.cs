@@ -142,6 +142,16 @@ public class CommandHandler
                     Logger.Info($"[CMD] Пользователь {userId} переведён в ChoosingLanguage, показано меню выбора языка");
                     return;
                 }
+                case "⬅ Назад": // ← именно так!!!
+                case "⬅️ Назад": // ← если хочешь поддержать версию с эмодзи
+                {
+                    Logger.Info($"[CMD] Нажата кнопка 'Назад' userId={userId}");
+                    var user = await _storage.LoadAsync(userId);
+                    await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
+                    await SendMainMenuAsync(chatId, user.Language, ct);
+                    return;
+                }
+
         }
 
         // ========================================================
@@ -254,8 +264,6 @@ public class CommandHandler
 
     public async Task ShowAuthorsAsync(long chatId, CancellationToken ct)
     {
-        Logger.Info($"[CMD] ShowAuthors: chatId={chatId}");
-
         var user = await _storage.LoadAsync(chatId);
         string lang = user.Language ?? "ru";
 
@@ -263,27 +271,38 @@ public class CommandHandler
             ? "👥 *Жоба авторлары*"
             : "👥 *Авторы проекта*";
 
-        string dev = lang == "kk"
-            ? "👨‍💻 *Әзірлеуші*: Батырхан\n• Бағдарлама логикасы\n• Интерфейс\n• Деректер базасы"
-            : "👨‍💻 *Разработчик*: Батырхан\n• Логика бота\n• Интерфейс\n• База данных";
+        string devDesc = lang == "kk"
+            ? "👨‍💻 *Батырхан*\nЖобаның әзірлеушісі"
+            : "👨‍💻 *Батырхан*\nРазработчик проекта";
 
-        string medic = lang == "kk"
-            ? "👩‍⚕️ *Медициналық сарапшы*: Аружан\n• Диабет мектебі үшін материалдар"
-            : "👩‍⚕️ *Медицинский эксперт*: Аружан\n• Материалы для школы диабета";
+        string medicDesc = lang == "kk"
+            ? "👩‍⚕️ *Аружан*\nМедициналық контент"
+            : "👩‍⚕️ *Аружан*\nМедицинский эксперт";
 
-        var kb = KeyboardBuilder.Menu(
-            Array.Empty<string>(),
-            true
-        );
+        // Кнопки
+        var kb = KeyboardBuilder.Menu(Array.Empty<string>(), true);
 
-        await _bot.SendMessage(
-            chatId,
-            $"{title}\n\n{dev}\n\n{medic}",
-            replyMarkup: kb,
-            cancellationToken: ct
-        );
+        // Пути картинок
+        string basePath = AppContext.BaseDirectory;
+        string devPath = Path.Combine(basePath, "Data", "authors", "Dev.jpg");
+        string medicPath = Path.Combine(basePath, "Data", "authors", "Medic.jpg");
+
+        // Отправляем заголовок
+        await _bot.SendMessage(chatId, title, cancellationToken: ct);
+
+        // Отправляем фото + подписи
+        if (System.IO.File.Exists(devPath))
+            await _bot.SendPhoto(chatId, InputFile.FromStream(System.IO.File.OpenRead(devPath)), caption: devDesc);
+
+        if (System.IO.File.Exists(medicPath))
+            await _bot.SendPhoto(chatId, InputFile.FromStream(System.IO.File.OpenRead(medicPath)), caption: medicDesc);
+
+        // Добавляем кнопку Назад
+        await _bot.SendMessage(chatId, lang == "kk" ? "Артқа" : "Назад", replyMarkup: kb, cancellationToken: ct);
     }
+
 }
+
 
 
 
