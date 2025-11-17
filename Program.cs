@@ -4,6 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Ключ, чтобы не было дублей -->
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
 
@@ -13,6 +15,7 @@
     <PackageReference Include="SkiaSharp" Version="2.88.6" />
   </ItemGroup>
 
+  <!-- Явно включаем JSON-файлы -->
   <ItemGroup>
     <Content Include="Data/**/*" CopyToOutputDirectory="Always" />
   </ItemGroup>
