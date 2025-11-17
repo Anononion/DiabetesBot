@@ -36,7 +36,8 @@ app.Lifetime.ApplicationStarted.Register(async () =>
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
     var bot = app.Services.GetRequiredService<BotService>();
-    await bot.SetWebhookAsync($"https://diabetesbot.onrender.com/webhook/{token}");
+    await bot.SetWebhookAsync($"https://diacare-2x9i.onrender.com/webhook/{token}");
 });
 
 app.Run();
+
