@@ -8,38 +8,35 @@ using Telegram.Bot.Types;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Загружаем .env (если нужен)
-var env = new EnvConfigService();
-env.LoadAndDecryptEnv();
+builder.Services.AddSingleton<BotService>(sp =>
+{
+    string? token = Environment.GetEnvironmentVariable("BOT_TOKEN");
+    if (string.IsNullOrEmpty(token))
+        throw new Exception("BOT_TOKEN missing");
 
-// токен
-string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
-if (string.IsNullOrEmpty(botToken))
-    throw new Exception("BOT_TOKEN environment variable missing");
-
-// Регистрируем BotService как singleton
-builder.Services.AddSingleton(new BotService(botToken));
+    return new BotService(token);
+});
 
 var app = builder.Build();
 
-// ===============================
-// Webhook Endpoint
-// ===============================
 app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string token) =>
 {
-    string? realToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
-
-    if (string.IsNullOrEmpty(realToken) || token != realToken)
+    if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
         return Results.Unauthorized();
 
-    Update? update = await ctx.Request.ReadFromJsonAsync<Update>();
+    var update = await ctx.Request.ReadFromJsonAsync<Update>();
     if (update != null)
         await bot.HandleWebhookAsync(update);
 
     return Results.Ok();
 });
 
-// ===============================
-// Запуск приложения
-// ===============================
+// ставим webhook при старте сервера
+app.Lifetime.ApplicationStarted.Register(async () =>
+{
+    var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
+    var bot = app.Services.GetRequiredService<BotService>();
+    await bot.SetWebhookAsync($"https://diabetesbot.onrender.com/webhook/{token}");
+});
+
 app.Run();
