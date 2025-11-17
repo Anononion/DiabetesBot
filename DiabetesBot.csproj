@@ -20,9 +20,6 @@
     <Content Include="Data/**/*" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Include="Data/**/*" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-
 </Project>
+
 
