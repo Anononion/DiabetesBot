@@ -31,7 +31,7 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     return Results.Ok();
 });
 
-// ставим webhook при старте сервера
+// register webhook on start
 app.Lifetime.ApplicationStarted.Register(async () =>
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
