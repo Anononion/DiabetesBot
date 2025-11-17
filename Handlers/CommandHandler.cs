@@ -137,6 +137,12 @@ public class CommandHandler
                     Logger.Info($"[CMD] Пользователь {userId} переведён в ChoosingLanguage, показано меню выбора языка");
                     return;
                 }
+            case "👤 Авторы":
+            case "👤 Авторлар":
+                {
+                    await ShowAuthorsAsync(chatId, userId, ct);
+                    return;
+                }
         }
 
         // ========================================================
@@ -244,4 +250,33 @@ public class CommandHandler
 
         Logger.Info($"[CMD] Меню настроек отправлено chatId={chatId}");
     }
+
+    public async Task ShowAuthorsAsync(long chatId, long userId, CancellationToken ct)
+    {
+        var user = await _storage.LoadAsync(userId);
+        bool kz = user.Language == "kk";
+
+        string text = kz
+            ? "👤 *Авторлар*\n\n"
+              + "🩺 *Медициналық сарапшы:* @Adiya_ua\n"
+              + "🧑‍💻 *Жасаушы:* @Batyr_dot_bat\n"
+            : "👤 *Авторы*\n\n"
+              + "🩺 *Медицинский эксперт:* @Adiya_ua\n"
+              + "🧑‍💻 *Разработчик:* @Batyr_dot_bat\n";
+
+        await _bot.SendTextMessageAsync(chatId, text, cancellationToken: ct);
+
+        string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
+
+        await _bot.SendPhotoAsync(chatId,
+            new Telegram.Bot.Types.InputFiles.InputOnlineFile(Path.Combine(baseDir, "author_medexpert.jpg")),
+            caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
+            cancellationToken: ct);
+    
+        await _bot.SendPhotoAsync(chatId,
+            new Telegram.Bot.Types.InputFiles.InputOnlineFile(Path.Combine(baseDir, "author_dev.jpg")),
+            caption: kz ? "Жасаушы" : "Разработчик",
+            cancellationToken: ct);
+    }
 }
+
