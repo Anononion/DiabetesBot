@@ -14,7 +14,7 @@ internal class Program
         Logger.Info("Starting DiabetesBot...");
 
         var env = new EnvConfigService();
-        env.LoadAndDecryptEnv();  
+        env.LoadAndDecryptEnv();
 
         string? botToken = Environment.GetEnvironmentVariable("BOT_TOKEN");
         if (string.IsNullOrEmpty(botToken))
@@ -25,14 +25,11 @@ internal class Program
 
         var botService = new BotService(botToken);
 
-        // ===== ASP.NET Webhook server =====
         var builder = WebApplication.CreateBuilder(args);
         var app = builder.Build();
 
-        // Healthcheck для Render
         app.MapGet("/", () => "OK");
 
-        // Webhook endpoint
         app.MapPost("/webhook/{token}", async (HttpRequest request, string token) =>
         {
             if (token != botToken)
@@ -48,8 +45,8 @@ internal class Program
             return Results.Ok();
         });
 
-        // Устанавливаем вебхук
-        string webhookUrl = $"https://{Environment.GetEnvironmentVariable("RENDER_EXTERNAL_HOSTNAME")}/webhook/{botToken}";
+        string hostname = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_HOSTNAME")!;
+        string webhookUrl = $"https://{hostname}/webhook/{botToken}";
 
         await botService.SetWebhookAsync(webhookUrl);
 
