@@ -51,15 +51,15 @@ public class DiabetesSchoolModule
             string ruPath = Path.Combine(dataDir, "lang_ru.json");
             string kkPath = Path.Combine(dataDir, "lang_kk.json");
 
-            Logger.Info($"[DS] RU path: {ruPath}, Exists={File.Exists(ruPath)}");
-            Logger.Info($"[DS] KK path: {kkPath}, Exists={File.Exists(kkPath)}");
-
-            if (File.Exists(ruPath))
-            {
-                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(ruPath));
-                if (json != null && json.ContainsKey("ds.lessons"))
-                {
-                    _lessonsRu =
+            Logger.Info($"[DS] RU path: {ruPath}, Exists={System.IO.File.Exists(ruPath)}");
+            Logger.Info($"[DS] KK path: {kkPath}, Exists={System.IO.File.Exists(kkPath)}");
+␊
+            if (System.IO.File.Exists(ruPath))
+            {␊
+                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(ruPath));
+                if (json != null && json.ContainsKey("ds.lessons"))␊
+                {␊
+                    _lessonsRu =␊
                         JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
                             json["ds.lessons"].ToString()!
                         )!;
@@ -67,9 +67,9 @@ public class DiabetesSchoolModule
                 }
             }
 
-            if (File.Exists(kkPath))
-            {
-                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(kkPath));
+            if (System.IO.File.Exists(kkPath))
+            {␊
+                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(kkPath));
                 if (json != null && json.ContainsKey("ds.lessons"))
                 {
                     _lessonsKk =
@@ -233,3 +233,4 @@ public class DiabetesSchoolModule
         Logger.Warn($"[DS] Неизвестный callback: {data}");
     }
 }
+
