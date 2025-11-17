@@ -257,31 +257,34 @@ public class CommandHandler
         bool kz = user.Language == "kk";
 
         string text = kz
-            ? "👤 *Авторлар*\n\n"
-              + "🩺 *Медициналық сарапшы:* @Adiya_ua\n"
-              + "🧑‍💻 *Жасаушы:* @Batyr_dot_bat\n"
-            : "👤 *Авторы*\n\n"
-              + "🩺 *Медицинский эксперт:* @Adiya_ua\n"
-              + "🧑‍💻 *Разработчик:* @Batyr_dot_bat\n";
+            ? "👤 *Авторлар*\n\n" +
+              "🩺 *Медициналық сарапшы:* @Adiya_ua\n" +
+              "🧑‍💻 *Жасаушы:* @Batyr_dot_bat\n"
+            : "👤 *Авторы*\n\n" +
+              "🩺 *Медицинский эксперт:* @Adiya_ua\n" +
+              "🧑‍💻 *Разработчик:* @Batyr_dot_bat\n";
 
-        await _bot.SendTextMessageAsync(chatId, text, cancellationToken: ct);
+        await _bot.SendMessage(chatId, text, cancellationToken: ct);
 
         string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
 
-        await _bot.SendPhotoAsync(
+        // Фото 1 — МЕД ЭКСПЕРТ
+        await _bot.SendPhoto(
             chatId,
-            new InputFile(Path.Combine(baseDir, "author_medexpert.jpg")),
+            InputFile.FromFile(Path.Combine(baseDir, "author_medexpert.jpg")),
             caption: kz ? "Медициналық сарапшы" : "Медицинский эксперт",
             cancellationToken: ct
         );
 
-        await _bot.SendPhotoAsync(
+    // Фото 2 — РАЗРАБОТЧИК
+        await _bot.SendPhoto(
             chatId,
-            new InputFile(Path.Combine(baseDir, "author_dev.jpg")),
+            InputFile.FromFile(Path.Combine(baseDir, "author_dev.jpg")),
             caption: kz ? "Жасаушы" : "Разработчик",
             cancellationToken: ct
         );
     }
 }
+
 
 
