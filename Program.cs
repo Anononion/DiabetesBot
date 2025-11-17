@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot.Types;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,11 @@ builder.Services.AddSingleton<BotService>(sp =>
     return new BotService(token);
 });
 
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNameCaseInsensitive = true
+};
+
 var app = builder.Build();
 
 // Webhook endpoint
@@ -26,9 +32,15 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
         return Results.Unauthorized();
 
-    var update = await ctx.Request.ReadFromJsonAsync<Update>();
+    using var reader = new StreamReader(ctx.Request.Body);
+    string raw = await reader.ReadToEndAsync();
+
+    Update? update = JsonSerializer.Deserialize<Update>(raw, jsonOptions);
+
     if (update != null)
         await bot.HandleWebhookAsync(update);
+    else
+        Logger.Warn("[WEBHOOK] Update == null — не удалось распарсить");
 
     return Results.Ok();
 });
@@ -50,3 +62,4 @@ async Task RegisterWebhook()
 _ = RegisterWebhook();
 
 app.Run();
+
