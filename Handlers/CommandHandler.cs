@@ -128,19 +128,18 @@ public class CommandHandler
                     Logger.Info($"[CMD] Показано меню настроек для userId={userId}");
                     return;
                 }
-
+                case "👤 Авторы":
+                {
+                    Logger.Info($"[CMD] Нажата кнопка 'Авторы' userId={userId}");
+                    await ShowAuthorsAsync(chatId, ct);
+                    return;
+                }
             case "🌐 Сменить язык":
                 {
                     Logger.Info($"[CMD] Нажата кнопка '🌐 Сменить язык' userId={userId}");
                     await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
                     await ShowLanguageMenuAsync(chatId, ct);
                     Logger.Info($"[CMD] Пользователь {userId} переведён в ChoosingLanguage, показано меню выбора языка");
-                    return;
-                }
-            case "👤 Авторы":
-            case "👤 Авторлар":
-                {
-                    await ShowAuthorsAsync(chatId, userId, ct);
                     return;
                 }
         }
@@ -238,9 +237,10 @@ public class CommandHandler
         Logger.Info($"[CMD] ShowSettingsMenu: chatId={chatId}");
 
         var kb = KeyboardBuilder.Menu(
-            new[] { "🌐 Сменить язык" },
+            new[] { "🌐 Сменить язык", "👤 Авторы" },
             showBack: true
         );
+
 
         await _bot.SendMessage(
             chatId,
@@ -251,55 +251,50 @@ public class CommandHandler
         Logger.Info($"[CMD] Меню настроек отправлено chatId={chatId}");
     }
 
-    public async Task ShowAuthorsAsync(long chatId, long userId, CancellationToken ct)
+
+    public async Task ShowAuthorsAsync(long chatId, CancellationToken ct)
     {
-        var user = await _storage.LoadAsync(userId);
-        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
+        Logger.Info($"[CMD] ShowAuthors: chatId={chatId}");
 
-        string baseDir = Path.Combine(AppContext.BaseDirectory, "Data", "authors");
+        string lang = (await _storage.LoadAsync(chatId)).Language ?? "ru";
 
-        string medicPath = Path.Combine(baseDir, "Medic.jpg");
-        string devPath = Path.Combine(baseDir, "Dev.jpg");
+        string title = lang == "kk"
+            ? "*Жоба авторлары*"
+            : "*Авторы проекта*";
 
-        // --------- Тексты ---------
-        string medicCaption = lang == "kk"
-            ? "👩‍⚕️ *Медициналық сарапшы*\n\nДенсаулық сақтау саласында 12 жылдан астам тәжірибесі бар дәрігер. Қант диабеті бойынша пациенттерге көмек көрсетуге маманданған."
-            : "👩‍⚕️ *Медицинский эксперт*\n\nВрач с более чем 12 годами опыта. Специализация — работа с пациентами с сахарным диабетом.";
+        string dev = lang == "kk"
+            ? "👨‍💻 *Әзірлеуші*: Батырхан\nБағдарлама логикасы, интерфейс, деректер базасы."
+            : "👨‍💻 *Разработчик*: Батырхан\nЛогика бота, интерфейс, базы данных.";
 
-        string devCaption = lang == "kk"
-            ? "👨‍💻 *Қосымша әзірлеушісі*\n\nБот идеясын жасаушы және техникалық функционалды жүзеге асырушы."
-            : "👨‍💻 *Разработчик приложения*\n\nАвтор идеи и разработчик технического функционала бота.";
+        string medic = lang == "kk"
+            ? "👩‍⚕️ *Медициналық маман*: Аружан\nДиабет мектебінің материалдары."
+            : "👩‍⚕️ *Медицинский эксперт*: Аружан\nМатериалы школы диабета.";
 
-        // --------- Отправляем фото эксперта ---------
-        using (var stream = System.IO.File.OpenRead(medicPath))
-        {
-            var inputFile = new InputFileStream(stream, "Medic.jpg");
-            await _bot.SendPhoto(
-                chatId: chatId,
-                photo: inputFile,
-                caption: medicCaption,
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
-                cancellationToken: ct
-            );
-        }
+        var kb = KeyboardBuilder.Menu(showBack: true);
 
-        // --------- Отправляем фото разработчика ---------
-        using (var stream = System.IO.File.OpenRead(devPath))
-        {
-            var inputFile = new InputFileStream(stream, "Dev.jpg");
-            await _bot.SendPhoto(
-                chatId: chatId,
-                photo: inputFile,
-                caption: devCaption,
-                parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown,
-                cancellationToken: ct
-            );
-        }
+        await _bot.SendMessage(
+            chatId,
+            $"{title}\n\n{dev}\n\n{medic}",
+            replyMarkup: kb,
+            cancellationToken: ct
+        );
 
-        Logger.Info("[CMD] Authors displayed");
+        Logger.Info($"[CMD] Авторы отправлены chatId={chatId}");
     }
 
+    public async Task ShowAuthors(long chatId, CancellationToken ct)
+    {
+        string text =
+            "👥 *Авторы проекта*\n\n" +
+            "🧑‍⚕️ *Медицинский эксперт*: Павлодарский эндокринолог. " +
+            "Отвечает за корректность информации.\n\n" +
+            "🧑‍💻 *Разработчик*: Batyrkhan Rysbekov — автор идеи и создатель бота.\n";
+
+      await _bot.SendMessage(chatId, text, cancellationToken: ct);
 }
+
+}
+
 
 
 
