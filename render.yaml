@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: diabetesbot
+    env: docker
+    region: frankfurt  # можно поменять
+    plan: free         # бесплатный план
+    autoDeploy: true
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: "/"

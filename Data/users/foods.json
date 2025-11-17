@@ -1,0 +1,32 @@
+[
+    {
+        "id": "apple",
+        "name": "Яблоко",
+        "carbsPer100": 11
+    },
+    {
+        "id": "banana",
+        "name": "Банан",
+        "carbsPer100": 23
+    },
+    {
+        "id": "pear",
+        "name": "Груша",
+        "carbsPer100": 12
+    },
+    {
+        "id": "potato",
+        "name": "Картофель",
+        "carbsPer100": 17
+    },
+    {
+        "id": "carrot",
+        "name": "Морковь",
+        "carbsPer100": 10
+    },
+    {
+        "id": "cabbage",
+        "name": "Капуста",
+        "carbsPer100": 6
+    }
+]
