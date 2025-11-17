@@ -5,11 +5,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot.Types;
-using System.Text.Json;
+using Telegram.Bot.Extensions.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DI — BotService
 builder.Services.AddSingleton<BotService>(sp =>
 {
     string? token = Environment.GetEnvironmentVariable("BOT_TOKEN");
@@ -19,14 +18,8 @@ builder.Services.AddSingleton<BotService>(sp =>
     return new BotService(token);
 });
 
-var jsonOptions = new JsonSerializerOptions
-{
-    PropertyNameCaseInsensitive = true
-};
-
 var app = builder.Build();
 
-// Webhook endpoint
 app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string token) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
@@ -35,7 +28,7 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     using var reader = new StreamReader(ctx.Request.Body);
     string raw = await reader.ReadToEndAsync();
 
-    Update? update = Newtonsoft.Json.JsonConvert.DeserializeObject<Update>(raw);
+    Update? update = Telegram.Bot.Extensions.Json.ParseUpdate(raw);
 
     if (update != null)
         await bot.HandleWebhookAsync(update);
@@ -45,21 +38,17 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, BotService bot, string t
     return Results.Ok();
 });
 
-// ===============================================
-// Правильная регистрация вебхука
-// ===============================================
 async Task RegisterWebhook()
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
     var bot = app.Services.GetRequiredService<BotService>();
-    string url = $"https://diacare-2x9i.onrender.com/webhook/{token}";
 
+    string url = $"https://diacare-2x9i.onrender.com/webhook/{token}";
     await bot.SetWebhookAsync(url);
+
     Logger.Info($"Webhook set: {url}");
 }
 
-// Запускаем регистрацию в отдельной таске
 _ = RegisterWebhook();
 
 app.Run();
-
