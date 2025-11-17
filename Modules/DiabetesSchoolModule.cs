@@ -57,7 +57,7 @@ public class DiabetesSchoolModule
             if (System.IO.File.Exists(ruPath))
             {
                 var json = JsonSerializer.Deserialize<Dictionary<string, object>>(System.IO.File.ReadAllText(ruPath));
-                if (json != null && json.ContainsKey("ds.lessons"))␊
+                if (json != null && json.ContainsKey("ds.lessons"))
                 {
                     _lessonsRu =
                         JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
@@ -233,5 +233,6 @@ public class DiabetesSchoolModule
         Logger.Warn($"[DS] Неизвестный callback: {data}");
     }
 }
+
 
 
