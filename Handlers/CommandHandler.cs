@@ -122,35 +122,31 @@ public class CommandHandler
                 }
 
             case "⚙️ Настройки":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '⚙️ Настройки' userId={userId}");
-                    await ShowSettingsMenu(chatId, ct);
-                    Logger.Info($"[CMD] Показано меню настроек для userId={userId}");
-                    return;
-                }
-                case "👤 Авторы":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка 'Авторы' userId={userId}");
-                    await ShowAuthorsAsync(chatId, ct);
-                    return;
-                }
+            case "⚙️ Параметрлер":
+                await ShowSettingsMenu(chatId, ct);
+                return;
+
+            case "👤 Авторы":
+            case "👤 Авторлар":
+                await ShowAuthorsAsync(chatId, ct);
+                return;
+
             case "🌐 Сменить язык":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '🌐 Сменить язык' userId={userId}");
-                    await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
-                    await ShowLanguageMenuAsync(chatId, ct);
-                    Logger.Info($"[CMD] Пользователь {userId} переведён в ChoosingLanguage, показано меню выбора языка");
-                    return;
-                }
-                case "⬅ Назад": // ← именно так!!!
-                case "⬅️ Назад": // ← если хочешь поддержать версию с эмодзи
-                {
-                    Logger.Info($"[CMD] Нажата кнопка 'Назад' userId={userId}");
-                    var user = await _storage.LoadAsync(userId);
-                    await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-                    await SendMainMenuAsync(chatId, user.Language, ct);
-                    return;
-                }
+            case "🌐 Тілді ауыстыру":
+                await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
+                await ShowLanguageMenuAsync(chatId, ct);
+                return;
+
+// BACK buttons:
+            case "⬅ Назад":
+            case "⬅️ Назад":
+            case "⬅ Артқа":
+            {
+                var user = await _storage.LoadAsync(userId);
+                await SendMainMenuAsync(chatId, user.Language, ct);
+                return;
+            }
+
 
         }
 
@@ -202,19 +198,16 @@ public class CommandHandler
     // ============================================================
     public async Task SendMainMenuAsync(long chatId, string lang, CancellationToken ct)
     {
-        Logger.Info($"[CMD] SendMainMenuAsync: chatId={chatId}, lang='{lang}'");
-
         string msg = lang == "kk"
             ? "🏠 *Негізгі мәзір*"
             : "🏠 *Главное меню*";
 
-        var kb = KeyboardBuilder.MainMenu();
+        var kb = KeyboardBuilder.MainMenu(lang);
 
         await _bot.SendMessage(chatId, msg, replyMarkup: kb, cancellationToken: ct);
         await _state.SetPhaseAsync(chatId, UserPhase.MainMenu);
-
-        Logger.Info($"[CMD] Главное меню отправлено chatId={chatId}");
     }
+
 
     // ============================================================
     // LANGUAGE MENU
@@ -244,21 +237,24 @@ public class CommandHandler
     // ============================================================
     public async Task ShowSettingsMenu(long chatId, CancellationToken ct)
     {
-        Logger.Info($"[CMD] ShowSettingsMenu: chatId={chatId}");
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language ?? "ru";
+
+        string title = lang == "kk"
+            ? "Параметрлер"
+            : "Настройки";
 
         var kb = KeyboardBuilder.Menu(
-            new[] { "🌐 Сменить язык", "👤 Авторы" },
+            lang == "kk"
+                ? new[] { "🌐 Тілді ауыстыру", "👤 Авторлар" }
+                : new[] { "🌐 Сменить язык", "👤 Авторы" },
+            lang,
             true
         );
 
-        await _bot.SendMessage(
-            chatId,
-            "Здесь будут настройки.",
-            replyMarkup: kb,
-            cancellationToken: ct);
-
-        Logger.Info($"[CMD] Меню настроек отправлено chatId={chatId}");
+        await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
     }
+
 
 
 
@@ -298,10 +294,17 @@ public class CommandHandler
             await _bot.SendPhoto(chatId, InputFile.FromStream(System.IO.File.OpenRead(medicPath)), caption: medicDesc);
 
         // Добавляем кнопку Назад
-        await _bot.SendMessage(chatId, lang == "kk" ? "Артқа" : "Назад", replyMarkup: kb, cancellationToken: ct);
+        await _bot.SendMessage(
+        chatId,
+        lang == "kk" ? "Артқа" : "Назад",
+        replyMarkup: KeyboardBuilder.Back(lang),
+        cancellationToken: ct
+    );
+
     }
 
 }
+
 
 
 
