@@ -1,34 +1,49 @@
-﻿using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace DiabetesBot.Utils;
 
 public static class KeyboardBuilder
 {
-    public static ReplyKeyboardMarkup MainMenu()
+    // ------------------------------------------------------
+    // MAIN MENU (LANG-DEPENDENT)
+    // ------------------------------------------------------
+    public static ReplyKeyboardMarkup MainMenu(string lang)
     {
+        return lang == "kk"
+            ? new ReplyKeyboardMarkup(new[]
+                {
+                    new KeyboardButton[] { "📈 Қант өлшеу", "🍞 НБ (нан бірлігі)" },
+                    new KeyboardButton[] { "📚 Диабет мектебі", "⚙️ Параметрлер" }
+                })
+                { ResizeKeyboard = true }
+            : new ReplyKeyboardMarkup(new[]
+                {
+                    new KeyboardButton[] { "📈 Глюкометрия", "🍞 Хлебные единицы" },
+                    new KeyboardButton[] { "📚 Школа диабета", "⚙️ Настройки" }
+                })
+                { ResizeKeyboard = true };
+    }
+
+    // ------------------------------------------------------
+    // BACK BUTTON (LANG-DEPENDENT)
+    // ------------------------------------------------------
+    public static ReplyKeyboardMarkup Back(string lang)
+    {
+        string back = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
+
         return new(new[]
         {
-            new KeyboardButton[] { "📈 Глюкометрия", "🍞 Хлебные единицы" },
-            new KeyboardButton[] { "📚 Школа диабета", "⚙️ Настройки" }
+            new KeyboardButton[] { back }
         })
         {
             ResizeKeyboard = true
         };
     }
 
-    public static ReplyKeyboardMarkup BackToMenu()
-    {
-        return new(new[]
-        {
-            new KeyboardButton[] { "⬅️ В меню" }
-        })
-        {
-            ResizeKeyboard = true,
-            OneTimeKeyboard = true
-        };
-    }
-
-    public static ReplyKeyboardMarkup Menu(string[] buttons, bool showBack = true)
+    // ------------------------------------------------------
+    // UNIVERSAL MENU (LANG-DEPENDENT)
+    // ------------------------------------------------------
+    public static ReplyKeyboardMarkup Menu(string[] buttons, string lang, bool showBack = true)
     {
         var rows = new List<List<KeyboardButton>>();
 
@@ -36,23 +51,11 @@ public static class KeyboardBuilder
             rows.Add(new List<KeyboardButton> { new KeyboardButton(btn) });
 
         if (showBack)
-            rows.Add(new List<KeyboardButton> { new KeyboardButton("⬅ Назад") });
+            rows.Add(new List<KeyboardButton> { new KeyboardButton(lang == "kk" ? "⬅ Артқа" : "⬅ Назад") });
 
         return new ReplyKeyboardMarkup(rows)
         {
             ResizeKeyboard = true
         };
-    }
-
-    public static InlineKeyboardMarkup List(string[] items, bool showBack = true)
-    {
-        var rows = items.Select(i =>
-            new[] { InlineKeyboardButton.WithCallbackData(i, i) }
-        ).ToList();
-
-        if (showBack)
-            rows.Add(new[] { InlineKeyboardButton.WithCallbackData("⬅ Назад", "BACK") });
-
-        return new InlineKeyboardMarkup(rows);
     }
 }
