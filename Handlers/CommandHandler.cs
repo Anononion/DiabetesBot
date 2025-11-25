@@ -276,7 +276,7 @@ public class CommandHandler
             : "👩‍⚕️ @Adiya_ua\nМедицинский эксперт\nЛучшая девочка этого аниме";
 
         // Кнопки
-        var kb = KeyboardBuilder.Menu(Array.Empty<string>(), true);
+        var kb = KeyboardBuilder.Menu(Array.Empty<string>(), lang, true)
 
         // Пути картинок
         string basePath = AppContext.BaseDirectory;
@@ -304,6 +304,7 @@ public class CommandHandler
     }
 
 }
+
 
 
 
