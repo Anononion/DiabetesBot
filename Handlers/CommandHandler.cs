@@ -34,7 +34,7 @@ public class CommandHandler
     }
 
     // ============================================================
-    // Показ главного меню
+    // Главное меню
     // ============================================================
     public async Task SendMainMenuAsync(long chatId, string lang, CancellationToken ct)
     {
@@ -47,7 +47,7 @@ public class CommandHandler
     }
 
     // ============================================================
-    // Основная обработка текстовых сообщений
+    // Основная обработка текста
     // ============================================================
     public async Task HandleMessageAsync(Message msg, CancellationToken ct)
     {
@@ -79,35 +79,36 @@ public class CommandHandler
         }
 
         // --------------------------------------------------------
-        // проверяем фазу
+        // Фаза выбора языка
         // --------------------------------------------------------
         var phase = await _state.GetPhaseAsync(userId);
-
 
         if (phase == UserPhase.ChoosingLanguage)
         {
             await _bot.SendMessage(
                 chatId,
-                lang == "kk" ? "Тілді төмендегі батырмадан таңдаңыз." : "Используйте кнопки ниже.",
+                lang == "kk"
+                    ? "Тілді төмендегі батырмадан таңдаңыз."
+                    : "Используйте кнопки ниже.",
                 cancellationToken: ct
             );
             return;
         }
 
         // --------------------------------------------------------
-        // ввод значения глюкозы
+        // Ввод значения глюкозы
         // --------------------------------------------------------
         if (phase == UserPhase.AwaitGlucoseValue)
         {
-            await _glucose.HandleValueInput(msg, ct);
+            await _glucose.HandleTextInputAsync(msg, ct);
             return;
         }
 
         // --------------------------------------------------------
-        // Кнопки главного меню
+        // Главные кнопки (двуязычные)
         // --------------------------------------------------------
         string btnGlu = lang == "kk" ? "📈 Қант өлшеу" : "📈 Глюкометрия";
-        string btnBu = lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
+        string btnBu  = lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
         string btnSchool = lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета";
         string btnSettings = lang == "kk" ? "⚙️ Параметрлер" : "⚙️ Настройки";
 
@@ -115,7 +116,7 @@ public class CommandHandler
         if (text == btnGlu)
         {
             await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
-            await _glucose.ShowMain(chatId, lang, ct);
+            await _glucose.ShowMain(chatId, ct);
             return;
         }
 
@@ -123,7 +124,7 @@ public class CommandHandler
         if (text == btnBu)
         {
             await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
-            await _bu.ShowMain(chatId, lang, ct);
+            await _bu.ShowMain(chatId, ct);
             return;
         }
 
@@ -136,17 +137,17 @@ public class CommandHandler
         }
 
         // --------------------------------------------------------
-        // ВНУТРЕННЯЯ ЛОГИКА МОДУЛЕЙ
+        // Внутренняя логика
         // --------------------------------------------------------
         if (phase == UserPhase.GlucoseMenu)
         {
-            await _glucose.HandleMessage(chatId, text, lang, ct);
+            await _glucose.HandleMessage(chatId, text, ct);
             return;
         }
 
         if (phase == UserPhase.BreadUnits)
         {
-            await _bu.HandleMessage(chatId, text, lang, ct);
+            await _bu.HandleMessage(chatId, text, ct);
             return;
         }
 
@@ -157,7 +158,7 @@ public class CommandHandler
         }
 
         // --------------------------------------------------------
-        // ФОЛЛБЭК
+        // Фоллбек
         // --------------------------------------------------------
         await _bot.SendMessage(
             chatId,
