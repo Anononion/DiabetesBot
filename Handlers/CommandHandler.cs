@@ -84,70 +84,85 @@ public class CommandHandler
         // ========================================================
         switch (text)
         {
+            // назад в главное меню (откуда угодно)
             case "⬅️ В меню":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '⬅️ В меню' userId={userId}");
-                    var user = await _storage.LoadAsync(userId);
-                    await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-                    await SendMainMenuAsync(chatId, user.Language, ct);
-                    Logger.Info($"[CMD] Пользователь {userId} возвращён в главное меню");
-                    return;
-                }
+            {
+                Logger.Info($"[CMD] Нажата кнопка '⬅️ В меню' userId={userId}");
+                var user = await _storage.LoadAsync(userId);
+                await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
+                await SendMainMenuAsync(chatId, user.Language, ct);
+                Logger.Info($"[CMD] Пользователь {userId} возвращён в главное меню");
+                return;
+            }
 
+            // Глюкометрия
             case "📈 Глюкометрия":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '📈 Глюкометрия' userId={userId}");
-                    await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
-                    await _glucose.ShowMain(chatId, ct);
-                    Logger.Info($"[CMD] Пользователь {userId} переведён в фазу GlucoseMenu");
-                    return;
-                }
+            case "📈 Глюкоза":
+            {
+                Logger.Info($"[CMD] Нажата кнопка '📈 Глюкометрия' userId={userId}");
+                await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
+                await _glucose.ShowMain(chatId, ct);
+                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу GlucoseMenu");
+                return;
+            }
 
+            // Хлебные единицы
             case "🍞 Хлебные единицы":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '🍞 Хлебные единицы' userId={userId}");
-                    await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
-                    await _bu.ShowMain(chatId, ct);
-                    Logger.Info($"[CMD] Пользователь {userId} переведён в фазу BreadUnits");
-                    return;
-                }
+            case "🍞 Нан бірліктері":
+            {
+                Logger.Info($"[CMD] Нажата кнопка '🍞 Хлебные единицы' userId={userId}");
+                await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
+                await _bu.ShowMain(chatId, ct);
+                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу BreadUnits");
+                return;
+            }
 
+            // Школа диабета
             case "📚 Школа диабета":
-                {
-                    Logger.Info($"[CMD] Нажата кнопка '📚 Школа диабета' userId={userId}");
-                    await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
-                    await _school.ShowMainMenuAsync(chatId, userId, ct);
-                    Logger.Info($"[CMD] Пользователь {userId} переведён в фазу DiabetesSchool и показано меню школы диабета");
-                    return;
-                }
+            case "📚 Қант диабеті мектебі":
+            {
+                Logger.Info($"[CMD] Нажата кнопка '📚 Школа диабета' userId={userId}");
+                await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
+                await _school.ShowMainMenuAsync(chatId, userId, ct);
+                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу DiabetesSchool и показано меню школы диабета");
+                return;
+            }
 
+            // Настройки
             case "⚙️ Настройки":
             case "⚙️ Параметрлер":
-                await ShowSettingsMenu(chatId, ct);
+            {
+                await ShowSettingsMenu(chatId, userId, ct);
                 return;
+            }
 
+            // Авторы
             case "👤 Авторы":
             case "👤 Авторлар":
-                await ShowAuthorsAsync(chatId, ct);
+            {
+                await ShowAuthorsAsync(chatId, userId, ct);
                 return;
+            }
 
+            // Смена языка
             case "🌐 Сменить язык":
             case "🌐 Тілді ауыстыру":
+            {
                 await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
                 await ShowLanguageMenuAsync(chatId, ct);
                 return;
+            }
 
-// BACK buttons:
+            // кнопка "Назад" для под-меню (авторы и т.п.)
             case "⬅ Назад":
             case "⬅️ Назад":
             case "⬅ Артқа":
             {
                 var user = await _storage.LoadAsync(userId);
+                await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
                 await SendMainMenuAsync(chatId, user.Language, ct);
                 return;
             }
-
-
         }
 
         // ========================================================
@@ -205,9 +220,9 @@ public class CommandHandler
         var kb = KeyboardBuilder.MainMenu(lang);
 
         await _bot.SendMessage(chatId, msg, replyMarkup: kb, cancellationToken: ct);
+        // тут у тебя фаза по userId, но в этом методе только chatId — как и было раньше
         await _state.SetPhaseAsync(chatId, UserPhase.MainMenu);
     }
-
 
     // ============================================================
     // LANGUAGE MENU
@@ -235,10 +250,10 @@ public class CommandHandler
     // ============================================================
     // SETTINGS
     // ============================================================
-    public async Task ShowSettingsMenu(long chatId, CancellationToken ct)
+    public async Task ShowSettingsMenu(long chatId, long userId, CancellationToken ct)
     {
-        var user = await _storage.LoadAsync(chatId);
-        string lang = user.Language ?? "ru";
+        var user = await _storage.LoadAsync(userId);
+        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
 
         string title = lang == "kk"
             ? "Параметрлер"
@@ -249,19 +264,19 @@ public class CommandHandler
                 ? new[] { "🌐 Тілді ауыстыру", "👤 Авторлар" }
                 : new[] { "🌐 Сменить язык", "👤 Авторы" },
             lang,
-            true
+            showBack: true
         );
 
         await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
     }
 
-
-
-
-    public async Task ShowAuthorsAsync(long chatId, CancellationToken ct)
+    // ============================================================
+    // AUTHORS
+    // ============================================================
+    public async Task ShowAuthorsAsync(long chatId, long userId, CancellationToken ct)
     {
-        var user = await _storage.LoadAsync(chatId);
-        string lang = user.Language ?? "ru";
+        var user = await _storage.LoadAsync(userId);
+        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
 
         string title = lang == "kk"
             ? "👥 *Жоба авторлары*"
@@ -275,9 +290,6 @@ public class CommandHandler
             ? "👩‍⚕️ @Adiya_ua\nМедициналық эксперт\nОсы анименің ең жақсы қызы"
             : "👩‍⚕️ @Adiya_ua\nМедицинский эксперт\nЛучшая девочка этого аниме";
 
-        // Кнопки
-        var kb = KeyboardBuilder.Menu(Array.Empty<string>(), lang, true)
-
         // Пути картинок
         string basePath = AppContext.BaseDirectory;
         string devPath = Path.Combine(basePath, "Data", "authors", "Dev.jpg");
@@ -288,30 +300,23 @@ public class CommandHandler
 
         // Отправляем фото + подписи
         if (System.IO.File.Exists(devPath))
-            await _bot.SendPhoto(chatId, InputFile.FromStream(System.IO.File.OpenRead(devPath)), caption: devDesc);
+            await _bot.SendPhoto(chatId,
+                InputFile.FromStream(System.IO.File.OpenRead(devPath)),
+                caption: devDesc,
+                cancellationToken: ct);
 
         if (System.IO.File.Exists(medicPath))
-            await _bot.SendPhoto(chatId, InputFile.FromStream(System.IO.File.OpenRead(medicPath)), caption: medicDesc);
+            await _bot.SendPhoto(chatId,
+                InputFile.FromStream(System.IO.File.OpenRead(medicPath)),
+                caption: medicDesc,
+                cancellationToken: ct);
 
-        // Добавляем кнопку Назад
+        // Кнопка Назад (локализованная)
         await _bot.SendMessage(
-        chatId,
-        lang == "kk" ? "Артқа" : "Назад",
-        replyMarkup: KeyboardBuilder.Back(lang),
-        cancellationToken: ct
-    );
-
+            chatId,
+            lang == "kk" ? "⬅ Артқа" : "⬅️ Назад",
+            replyMarkup: KeyboardBuilder.Back(lang),
+            cancellationToken: ct
+        );
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
