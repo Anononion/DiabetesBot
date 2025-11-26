@@ -29,17 +29,18 @@ public class BotService
         // === Handlers ===
         _callbackHandler = new CallbackHandler(_bot, state, storage, glucose, bu, school);
 
-        // ВНИМАНИЕ: CommandHandler теперь принимает 6 аргументов, не 7
+        // ВАЖНО: подаём callback в качестве 7 аргумента
         _commandHandler = new CommandHandler(
             _bot,
             state,
             storage,
             glucose,
             bu,
-            school
+            school,
+            _callbackHandler
         );
 
-        // Связь обработчиков
+        // Даем callback'у ссылку на command handler
         _callbackHandler.SetCommandHandler(_commandHandler);
 
         Logger.Info("[BOT] BotService создан");
