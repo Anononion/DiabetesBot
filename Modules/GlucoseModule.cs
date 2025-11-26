@@ -25,16 +25,16 @@ public class GlucoseModule
         _storage = storage;
     }
 
-    // ==========================
-    // Главное меню
-    // ==========================
+    // ======================================================
+    // ГЛАВНОЕ МЕНЮ
+    // ======================================================
     public async Task ShowMain(long chatId, string lang, CancellationToken ct)
     {
         string t_action = lang == "kk" ? "Әрекетті таңдаңыз:" : "Выберите действие:";
         string t_add = lang == "kk" ? "➕ Өлшеу қосу" : "➕ Добавить измерение";
         string t_hist = lang == "kk" ? "📋 Тарих" : "📋 История";
         string t_stats = lang == "kk" ? "📊 Статистика" : "📊 Статистика";
-        string t_back = lang == "kk" ? "⬅️ Мәзірге оралу" : "⬅️ В меню";
+        string t_back = lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
 
         var kb = new ReplyKeyboardMarkup(new[]
         {
@@ -47,9 +47,9 @@ public class GlucoseModule
         await _bot.SendMessage(chatId, t_action, replyMarkup: kb, cancellationToken: ct);
     }
 
-    // ==========================
-    // Обработка текстов
-    // ==========================
+    // ======================================================
+    // ОБРАБОТКА ТЕКСТОВ
+    // ======================================================
     public async Task HandleMessage(long chatId, string text, CancellationToken ct)
     {
         long userId = chatId;
@@ -63,25 +63,28 @@ public class GlucoseModule
         string t_hist = lang == "kk" ? "📋 Тарих" : "📋 История";
         string t_stats = lang == "kk" ? "📊 Статистика" : "📊 Статистика";
 
-        switch (text)
+        if (text == t_add)
         {
-            case var _ when text == t_add:
-                await StartMeasurementAsync(chatId, lang, ct);
-                return;
+            await StartMeasurementAsync(chatId, lang, ct);
+            return;
+        }
 
-            case var _ when text == t_hist:
-                await ShowHistoryAsync(chatId, lang, ct);
-                return;
+        if (text == t_hist)
+        {
+            await ShowHistoryAsync(chatId, lang, ct);
+            return;
+        }
 
-            case var _ when text == t_stats:
-                await ShowStatsAsync(chatId, lang, ct);
-                return;
+        if (text == t_stats)
+        {
+            await ShowStatsAsync(chatId, lang, ct);
+            return;
         }
     }
 
-    // ==========================
-    // Начало измерения
-    // ==========================
+    // ======================================================
+    // СТАРТ ИЗМЕРЕНИЯ
+    // ======================================================
     public async Task StartMeasurementAsync(long chatId, string lang, CancellationToken ct)
     {
         string title = lang == "kk" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:";
@@ -101,9 +104,9 @@ public class GlucoseModule
         await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
     }
 
-    // ==========================
-    // Callback измерения
-    // ==========================
+    // ======================================================
+    // CALLBACK ИЗМЕРЕНИЙ
+    // ======================================================
     public async Task HandleCallbackAsync(CallbackQuery query, CancellationToken ct)
     {
         if (query.Data == null || !query.Data.StartsWith("measure_"))
@@ -133,10 +136,10 @@ public class GlucoseModule
         await _bot.SendMessage(chatId, ask, cancellationToken: ct);
     }
 
-    // ==========================
-    // Приём значения глюкозы
-    // ==========================
-    public async Task HandleTextInputAsync(Message msg, CancellationToken ct)
+    // ======================================================
+    // ВВОД ЧИСЛА
+    // ======================================================
+    public async Task HandleTextInput(Message msg, CancellationToken ct)
     {
         long userId = msg.From!.Id;
         long chatId = msg.Chat.Id;
@@ -153,7 +156,8 @@ public class GlucoseModule
         string type = PendingInputs[userId];
         string valueText = msg.Text!.Replace(',', '.');
 
-        if (!double.TryParse(valueText,
+        if (!double.TryParse(
+            valueText,
             System.Globalization.NumberStyles.Any,
             System.Globalization.CultureInfo.InvariantCulture,
             out double val))
@@ -163,7 +167,6 @@ public class GlucoseModule
             return;
         }
 
-        // сохранение
         user.Measurements.Add(new Measurement
         {
             Timestamp = DateTime.Now,
@@ -175,7 +178,6 @@ public class GlucoseModule
         PendingInputs.Remove(userId);
         await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
 
-        // интерпретация
         string status = InterpretGlucose(val, type, lang);
         string advice = AdviceGlucose(val, type, lang);
 
@@ -188,25 +190,23 @@ public class GlucoseModule
         await ShowMain(chatId, lang, ct);
     }
 
-    private static string TypeToRu(string t) =>
-        t switch {
-            "fasting" => "натощак",
-            "after" => "после еды",
-            "time" => "по времени",
-            _ => t
-        };
+    private static string TypeToRu(string t) => t switch {
+        "fasting" => "натощак",
+        "after" => "после еды",
+        "time" => "по времени",
+        _ => t
+    };
 
-    private static string TypeToKz(string t) =>
-        t switch {
-            "fasting" => "аш қарынға",
-            "after" => "тамақтан кейін",
-            "time" => "уақыт бойынша",
-            _ => t
-        };
+    private static string TypeToKz(string t) => t switch {
+        "fasting" => "аш қарынға",
+        "after" => "тамақтан кейін",
+        "time" => "уақыт бойынша",
+        _ => t
+    };
 
-    // ==========================
-    // История
-    // ==========================
+    // ======================================================
+    // ИСТОРИЯ
+    // ======================================================
     public async Task ShowHistoryAsync(long chatId, string lang, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(chatId);
@@ -219,9 +219,7 @@ public class GlucoseModule
             return;
         }
 
-        var list = user.Measurements
-            .OrderByDescending(x => x.Timestamp)
-            .Take(10);
+        var list = user.Measurements.OrderByDescending(x => x.Timestamp).Take(10);
 
         string title = lang == "kk" ? "Соңғы өлшеулер:\n\n" : "Последние измерения:\n\n";
 
@@ -231,17 +229,15 @@ public class GlucoseModule
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
     }
 
-    // ==========================
-    // Статистика
-    // ==========================
+    // ======================================================
+    // СТАТИСТИКА
+    // ======================================================
     public async Task ShowStatsAsync(long chatId, string lang, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(chatId);
         var now = DateTime.Now;
 
-        var last7 = user.Measurements
-            .Where(x => (now - x.Timestamp).TotalDays <= 7)
-            .ToList();
+        var last7 = user.Measurements.Where(x => (now - x.Timestamp).TotalDays <= 7).ToList();
 
         if (last7.Count == 0)
         {
@@ -256,25 +252,24 @@ public class GlucoseModule
         double max = last7.Max(x => x.Value.GetValueOrDefault());
 
         string text = lang == "kk"
-            ? $"📊 7 күндік статистика:\nОрташа: {avg:F1}\nМин.: {min:F1}\nМакс.: {max:F1}\nЗаписьтер: {last7.Count}"
+            ? $"📊 7 күндік статистика:\nОрташа: {avg:F1}\nМин.: {min:F1}\nМакс.: {max:F1}\nЖазба: {last7.Count}"
             : $"📊 Статистика за 7 дней:\nСреднее: {avg:F1}\nМин.: {min:F1}\nМакс.: {max:F1}\nЗаписей: {last7.Count}";
 
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
 
-        // график
-        var chartBytes = ChartGenerator.GenerateGlucoseChart(last7);
+        var bytes = ChartGenerator.GenerateGlucoseChart(last7);
 
         await _bot.SendPhoto(
             chatId,
-            new InputFileStream(new MemoryStream(chartBytes), "glucose.png"),
+            new InputFileStream(new MemoryStream(bytes), "glucose.png"),
             caption: lang == "kk" ? "График:" : "График:",
             cancellationToken: ct
         );
     }
 
-    // ==========================
-    // Интерпретация
-    // ==========================
+    // ======================================================
+    // ИНТЕРПРЕТАЦИЯ
+    // ======================================================
     private string InterpretGlucose(double v, string type, string lang)
     {
         string low = lang == "kk" ? "🟡 Төмен" : "🟡 Понижено";
@@ -301,9 +296,6 @@ public class GlucoseModule
         return v < 3.9 ? low : v < 11.1 ? norm : danger;
     }
 
-    // ==========================
-    // Советы
-    // ==========================
     private string AdviceGlucose(double v, string type, string lang)
     {
         if (v < 3.9)
