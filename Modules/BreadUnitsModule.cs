@@ -1,8 +1,8 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Models;
 using DiabetesBot.Services;
-using DiabetesBot.Utils; // ЛОГГЕР работает отсюда
+using DiabetesBot.Utils;
 
 namespace DiabetesBot.Modules;
 
@@ -31,97 +31,66 @@ public class BreadUnitsModule
         Logger.Info($"[BU] Загружено категорий: {_categories.Count}");
     }
 
-    // ------------------------------------------------------
+    // ============================================================
     // Главное меню
-    // ------------------------------------------------------
+    // ============================================================
     public async Task ShowMain(long chatId, CancellationToken ct)
     {
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
+
+        string add = lang == "kk" ? "➕ Өнім қосу" : "➕ Добавить продукт";
+        string history = lang == "kk" ? "📄 ХЕ тарихы" : "📄 История ХЕ";
+        string back = lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
+        string title = lang == "kk" ? "🥖 Нан бірліктері — әрекетті таңдаңыз:" :
+                                      "🥖 Хлебные единицы — выберите действие:";
+
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "➕ Добавить продукт" },
-            new KeyboardButton[] { "📄 История ХЕ" },
-            new KeyboardButton[] { "⬅️ В меню" }
+            new KeyboardButton[] { add },
+            new KeyboardButton[] { history },
+            new KeyboardButton[] { back }
         })
         { ResizeKeyboard = true };
 
-        await _bot.SendMessage(chatId,
-            "🥖 Хлебные единицы — выбор действия:",
-            replyMarkup: kb,
-            cancellationToken: ct);
+        await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
     }
 
     public async Task HandleMessage(long chatId, string text, CancellationToken ct)
     {
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
+
+        string add = lang == "kk" ? "➕ Өнім қосу" : "➕ Добавить продукт";
+        string history = lang == "kk" ? "📄 ХЕ тарихы" : "📄 История ХЕ";
+
         long userId = chatId;
         var phase = await _state.GetPhaseAsync(userId);
+        if (phase != UserPhase.BreadUnits) return;
 
-        if (phase != UserPhase.BreadUnits)
-            return;
-
-        switch (text)
-        {
-            case "➕ Добавить продукт":
-                await ShowCategoryMenu(chatId, ct);
-                return;
-
-            case "📄 История ХЕ":
-                await ShowHistory(chatId, ct);
-                return;
-        }
-    }
-
-    // ------------------------------------------------------
-    // Callback-кнопки
-    // ------------------------------------------------------
-    public async Task HandleButton(long chatId, string data, CancellationToken ct)
-    {
-        if (!data.StartsWith("BU_"))
-            return;
-
-        Logger.Info($"[BU] Click: {data}");
-
-        if (data == "BU_ADD")
+        if (text == add)
         {
             await ShowCategoryMenu(chatId, ct);
             return;
         }
 
-        if (data.StartsWith("BU_CAT_"))
+        if (text == history)
         {
-            string cat = data.Replace("BU_CAT_", "");
-            await ShowProductsInCategory(chatId, cat, ct);
-            return;
-        }
-
-        if (data.StartsWith("BU_PROD_"))
-        {
-            string id = data.Replace("BU_PROD_", "");
-            await AskWeight(chatId, id, ct);
+            await ShowHistory(chatId, ct);
             return;
         }
     }
 
-    private string Norm(string s)
-    {
-        if (s == null) return "";
-
-        return new string(
-            s.Replace("\uFEFF", "")  // убираем BOM
-             .Trim()
-             .ToLower()
-             .Replace("ё", "е")
-             .Where(c => !char.IsControl(c))
-             .ToArray()
-        );
-    }
-
-
-    // ------------------------------------------------------
-    // Выбор категории
-    // ------------------------------------------------------
+    // ============================================================
+    // Меню категорий
+    // ============================================================
     private async Task ShowCategoryMenu(long chatId, CancellationToken ct)
     {
-        Logger.Info("[BU] Открыто меню категорий");
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
+
+        string back = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
+        string title = lang == "kk" ? "Санатты таңдаңыз:" : "Выберите категорию:";
 
         var rows = _categories.Keys
             .Select(c => new[]
@@ -130,78 +99,39 @@ public class BreadUnitsModule
             })
             .ToList();
 
-        rows.Add(new[] { InlineKeyboardButton.WithCallbackData("⬅ Назад", "BU_ADD") });
+        rows.Add(new[] { InlineKeyboardButton.WithCallbackData(back, "BU_ADD") });
 
         await _bot.SendMessage(chatId,
-            "Выберите категорию:",
+            title,
             replyMarkup: new InlineKeyboardMarkup(rows),
             cancellationToken: ct);
     }
 
-    // ---------- общий нормализатор ----------
-    private static string Normalize(string? s)
-    {
-        if (string.IsNullOrWhiteSpace(s))
-            return string.Empty;
-
-        return new string(
-            s.Trim()
-             .ToLowerInvariant()
-             .Replace('ё', 'е')
-             .Where(c => !char.IsControl(c))
-             .ToArray()
-        );
-    }
-    // ------------------------------------------------------
-    // Список продуктов в категории
-    // ------------------------------------------------------
+    // ============================================================
+    // Продукты в категории
+    // ============================================================
     private async Task ShowProductsInCategory(long chatId, string cat, CancellationToken ct)
     {
-        Logger.Info($"[BU] Выбрана категория (сырая): '{cat}'");
-        Logger.Info($"[BU] Ключи категорий: {string.Join(" | ", _categories.Keys)}");
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
+
+        string back = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
+        string title = lang == "kk" ? $"Категория: *{cat}*" : $"Категория *{cat}*:";
 
         string normCat = Normalize(cat);
-
-        // ищем реальный ключ в словаре
         var key = _categories.Keys.FirstOrDefault(k => Normalize(k) == normCat);
-        Logger.Info($"[BU] Нормализованный cat='{normCat}', найденный ключ='{key}'");
 
-        if (key is null)
+        if (key == null)
         {
-            Logger.Error($"[BU] Категория не найдена: '{cat}' / '{normCat}'");
-            await _bot.SendMessage(chatId,
-                $"Ошибка: категория *{cat}* не найдена.",
-                cancellationToken: ct);
+            string err = lang == "kk"
+                ? $"Қате: *{cat}* санаты табылмады."
+                : $"Ошибка: категория *{cat}* не найдена.";
+
+            await _bot.SendMessage(chatId, err, cancellationToken: ct);
             return;
         }
 
         var rawList = _categories[key];
-        Logger.Info($"[BU] rawList.Count для '{key}': {rawList?.Count ?? 0}");
-
-        if (rawList == null || rawList.Count == 0)
-        {
-            Logger.Warn($"[BU] Строка категории '{key}' пустая");
-            await _bot.SendMessage(chatId,
-                $"Для категории *{cat}* нет продуктов.",
-                cancellationToken: ct);
-            return;
-        }
-
-        // Логируем все значения из категории
-        foreach (var r in rawList)
-        {
-            Logger.Info($"[BU] raw item: '{r}' => '{Normalize(r)}'");
-        }
-
-        // Логируем все продукты из foods.json
-        foreach (var f in _foods)
-        {
-            Logger.Info($"[BU] food: id='{f.Id}' -> '{Normalize(f.Id)}', " +
-                        $"name='{f.Name}' -> '{Normalize(f.Name)}'");
-        }
-
-        Logger.Info("[BU] Начинаем сопоставление с foods.json");
-
         var foodsInCategory = _foods
             .Where(f =>
                 rawList.Any(r =>
@@ -209,14 +139,13 @@ public class BreadUnitsModule
                     Normalize(r) == Normalize(f.Name)))
             .ToList();
 
-        Logger.Info($"[BU] Найдено совпадений после сравнения: {foodsInCategory.Count}");
-
         if (foodsInCategory.Count == 0)
         {
-            Logger.Warn($"[BU] В категории {cat} НЕТ продуктов в foods.json");
-            await _bot.SendMessage(chatId,
-                $"Для категории *{cat}* не найдено продуктов в foods.json.",
-                cancellationToken: ct);
+            string msg = lang == "kk"
+                ? $"Бұл санатта өнімдер жоқ."
+                : $"В этой категории нет продуктов.";
+
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
 
@@ -227,98 +156,98 @@ public class BreadUnitsModule
             })
             .ToList();
 
-        rows.Add(new[] { InlineKeyboardButton.WithCallbackData("⬅ Назад", "BU_ADD") });
+        rows.Add(new[] { InlineKeyboardButton.WithCallbackData(back, "BU_ADD") });
 
-        await _bot.SendMessage(
-            chatId,
-            $"Продукты категории *{cat}*: ",
+        await _bot.SendMessage(chatId, title,
             replyMarkup: new InlineKeyboardMarkup(rows),
             cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Запрос веса
-    // ------------------------------------------------------
+    // Нормализация
+    private static string Normalize(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "";
+        return new string(
+            s.Trim()
+             .ToLowerInvariant()
+             .Replace('ё', 'е')
+             .Where(c => !char.IsControl(c))
+             .ToArray()
+        );
+    }
+
+    // ============================================================
+    // Запрос веса продукта
+    // ============================================================
     private async Task AskWeight(long chatId, string id, CancellationToken ct)
     {
-        Logger.Info($"[BU] AskWeight получил id={id}");
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
 
         long userId = chatId;
 
         _state.TempString(userId, "food_id", id);
         _state.SetStep(userId, UserStep.BU_WaitWeight);
 
-        var item = _foods.FirstOrDefault(f => f.Id == id);
+        var item = _foods.FirstOrDefault(f => f.Id == id)
+                   ?? _foods.FirstOrDefault(f =>
+                        Normalize(f.Name) == Normalize(id));
 
         if (item == null)
         {
-            Logger.Warn($"[BU] НЕ найден продукт по id='{id}', пробуем по имени…");
+            string msg = lang == "kk"
+                ? "Қате: өнім табылмады."
+                : "Ошибка: продукт не найден.";
 
-            item = _foods.FirstOrDefault(f =>
-                f.Name.Trim().ToLower().Replace("ё", "е") ==
-                id.Trim().ToLower().Replace("ё", "е"));
-        }
-
-        if (item == null)
-        {
-            Logger.Error($"[BU] Продукт НЕ найден по id И не найден по имени: {id}");
-            await _bot.SendMessage(chatId, "Ошибка: продукт не найден.", cancellationToken: ct);
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
 
-        Logger.Info($"[BU] Найден продукт: {item.Id} / {item.Name}");
+        string ask = lang == "kk"
+            ? $"*{item.Name}* өнімінің грамын енгізіңіз:"
+            : $"Введите вес *{item.Name}* в граммах:";
 
-        await _bot.SendMessage(chatId,
-            $"Введите вес *{item.Name}* в граммах:",
-            cancellationToken: ct);
+        await _bot.SendMessage(chatId, ask, cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Обработка числа граммов
-    // ------------------------------------------------------
+    // ============================================================
+    // Обработка введённого веса
+    // ============================================================
     public async Task HandleText(long chatId, string text, CancellationToken ct)
     {
         long userId = chatId;
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
 
         var phase = await _state.GetPhaseAsync(userId);
-        if (phase != UserPhase.BreadUnits)
-            return;
 
-        if (_state.GetState(userId).State.Step != UserStep.BU_WaitWeight)
-            return;
-
-        Logger.Info($"[BU] HandleText: введено '{text}'");
+        if (phase != UserPhase.BreadUnits) return;
+        if (_state.GetState(userId).State.Step != UserStep.BU_WaitWeight) return;
 
         if (!int.TryParse(text, out int grams) || grams <= 0)
         {
-            Logger.Warn("[BU] Некорректное число граммов");
-            await _bot.SendMessage(chatId, "Введите число граммов, например 150.", cancellationToken: ct);
+            string msg = lang == "kk"
+                ? "Граммды дұрыс енгізіңіз. Мысалы: 150"
+                : "Введите корректное число граммов. Например: 150.";
+
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
 
         string id = _state.TempString(userId, "food_id");
-
-        Logger.Info($"[BU] HandleText: id из state: '{id}'");
-
-        var item = _foods.FirstOrDefault(f => f.Id == id);
-
-        if (item == null)
-        {
-            Logger.Warn("[BU] НЕ найден по id, пробуем искать по имени…");
-
-            item = _foods.FirstOrDefault(f =>
-                f.Name.Trim().ToLower().Replace("ё", "е") ==
-                id.Trim().ToLower().Replace("ё", "е"));
-        }
+        var item = _foods.FirstOrDefault(f => f.Id == id)
+                   ?? _foods.FirstOrDefault(f =>
+                        Normalize(f.Name) == Normalize(id));
 
         if (item == null)
         {
-            Logger.Error("[BU] HandleText: продукт НЕ НАЙДЕН");
-            await _bot.SendMessage(chatId, "Ошибка: продукт не найден.", cancellationToken: ct);
+            string msg = lang == "kk"
+                ? "Қате: өнім табылмады."
+                : "Ошибка: продукт не найден.";
+
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
-
-        Logger.Info($"[BU] Расчёт ХЕ: {item.Name}, {grams} г");
 
         double carbs = item.CarbsPer100 / 100.0 * grams;
         double xe = carbs / 12.0;
@@ -331,31 +260,42 @@ public class BreadUnitsModule
             Xe = Math.Round(xe, 2)
         });
 
-        await _bot.SendMessage(chatId,
-            $"🍽 *{item.Name}* — {grams} г\nУглеводы: {carbs:F1} г\nХЕ: {xe:F2}",
-            cancellationToken: ct);
+        string result = lang == "kk"
+            ? $"🍽 *{item.Name}* — {grams} г\nКөмірсулар: {carbs:F1} г\nХЕ: {xe:F2}"
+            : $"🍽 *{item.Name}* — {grams} г\nУглеводы: {carbs:F1} г\nХЕ: {xe:F2}";
+
+        await _bot.SendMessage(chatId, result, cancellationToken: ct);
 
         _state.Clear(userId);
         await ShowMain(chatId, ct);
     }
 
-    // ------------------------------------------------------
+    // ============================================================
     // История ХЕ
-    // ------------------------------------------------------
+    // ============================================================
     private async Task ShowHistory(long chatId, CancellationToken ct)
     {
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
+
         var list = _storage.LoadXeHistory(chatId);
 
         if (list.Count == 0)
         {
-            await _bot.SendMessage(chatId, "История пуста.", cancellationToken: ct);
+            string msg = lang == "kk"
+                ? "Тарих бос."
+                : "История пуста.";
+
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
 
-        string txt = "📄 История ХЕ:\n\n" +
-                     string.Join("\n", list
-                         .TakeLast(20)
-                         .Select(r => $"{r.Timestamp:dd.MM HH:mm} — {r.Product} ({r.Grams} г) = {r.Xe} ХЕ"));
+        string title = lang == "kk" ? "📄 ХЕ тарихы:\n\n" : "📄 История ХЕ:\n\n";
+
+        string txt = title +
+                     string.Join("\n",
+                         list.TakeLast(20).Select(r =>
+                             $"{r.Timestamp:dd.MM HH:mm} — {r.Product} ({r.Grams} г) = {r.Xe} ХЕ"));
 
         await _bot.SendMessage(chatId, txt, cancellationToken: ct);
     }
