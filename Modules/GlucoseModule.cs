@@ -1,4 +1,4 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Models;
@@ -25,63 +25,85 @@ public class GlucoseModule
         _storage = storage;
     }
 
-    // === Главное меню ===
-    public async Task ShowMain(long chatId, CancellationToken ct)
+    // ==========================
+    // Главное меню
+    // ==========================
+    public async Task ShowMain(long chatId, string lang, CancellationToken ct)
     {
+        string t_action = lang == "kk" ? "Әрекетті таңдаңыз:" : "Выберите действие:";
+        string t_add = lang == "kk" ? "➕ Өлшеу қосу" : "➕ Добавить измерение";
+        string t_hist = lang == "kk" ? "📋 Тарих" : "📋 История";
+        string t_stats = lang == "kk" ? "📊 Статистика" : "📊 Статистика";
+        string t_back = lang == "kk" ? "⬅️ Мәзірге оралу" : "⬅️ В меню";
+
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "➕ Добавить измерение" },
-            new KeyboardButton[] { "📋 История", "📊 Статистика" },
-            new KeyboardButton[] { "⬅️ В меню" }
+            new KeyboardButton[] { t_add },
+            new KeyboardButton[] { t_hist, t_stats },
+            new KeyboardButton[] { t_back }
         })
         { ResizeKeyboard = true };
 
-        await _bot.SendMessage(chatId, "Выберите действие:", replyMarkup: kb, cancellationToken: ct);
+        await _bot.SendMessage(chatId, t_action, replyMarkup: kb, cancellationToken: ct);
     }
 
-    // === Обработка текстов ===
+    // ==========================
+    // Обработка текстов
+    // ==========================
     public async Task HandleMessage(long chatId, string text, CancellationToken ct)
     {
         long userId = chatId;
+        var user = await _storage.LoadAsync(userId);
+        string lang = user.Language;
 
         var phase = await _state.GetPhaseAsync(userId);
         if (phase != UserPhase.GlucoseMenu) return;
 
+        string t_add = lang == "kk" ? "➕ Өлшеу қосу" : "➕ Добавить измерение";
+        string t_hist = lang == "kk" ? "📋 Тарих" : "📋 История";
+        string t_stats = lang == "kk" ? "📊 Статистика" : "📊 Статистика";
+
         switch (text)
         {
-            case "➕ Добавить измерение":
-                await StartMeasurementAsync(chatId, ct);
+            case var _ when text == t_add:
+                await StartMeasurementAsync(chatId, lang, ct);
                 return;
 
-            case "📋 История":
-                await ShowHistoryAsync(chatId, ct);
+            case var _ when text == t_hist:
+                await ShowHistoryAsync(chatId, lang, ct);
                 return;
 
-            case "📊 Статистика":
-                await ShowStatsAsync(chatId, ct);
+            case var _ when text == t_stats:
+                await ShowStatsAsync(chatId, lang, ct);
                 return;
         }
     }
 
-    // === Начало измерения ===
-    public async Task StartMeasurementAsync(long chatId, CancellationToken ct)
+    // ==========================
+    // Начало измерения
+    // ==========================
+    public async Task StartMeasurementAsync(long chatId, string lang, CancellationToken ct)
     {
+        string title = lang == "kk" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:";
+
         var kb = new InlineKeyboardMarkup(new[]
         {
             new[] {
-                InlineKeyboardButton.WithCallbackData("⏱️ Натощак", "measure_fasting"),
-                InlineKeyboardButton.WithCallbackData("🍽️ После еды", "measure_after")
+                InlineKeyboardButton.WithCallbackData(lang == "kk" ? "⏱️ Аш қарынға" : "⏱️ Натощак", "measure_fasting"),
+                InlineKeyboardButton.WithCallbackData(lang == "kk" ? "🍽️ Тамақтан кейін" : "🍽️ После еды", "measure_after")
             },
             new[] {
-                InlineKeyboardButton.WithCallbackData("⏰ По времени", "measure_time"),
-                InlineKeyboardButton.WithCallbackData("❌ Забыл", "measure_skip")
+                InlineKeyboardButton.WithCallbackData(lang == "kk" ? "⏰ Уақыт бойынша" : "⏰ По времени", "measure_time"),
+                InlineKeyboardButton.WithCallbackData(lang == "kk" ? "❌ Өлшемеген" : "❌ Забыл", "measure_skip")
             }
         });
 
-        await _bot.SendMessage(chatId, "Выберите тип измерения:", replyMarkup: kb, cancellationToken: ct);
+        await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
     }
 
-    // === Обработка callback ===
+    // ==========================
+    // Callback измерения
+    // ==========================
     public async Task HandleCallbackAsync(CallbackQuery query, CancellationToken ct)
     {
         if (query.Data == null || !query.Data.StartsWith("measure_"))
@@ -89,38 +111,38 @@ public class GlucoseModule
 
         long userId = query.From.Id;
         long chatId = query.Message!.Chat.Id;
+        var user = await _storage.LoadAsync(userId);
+        string lang = user.Language;
 
         string type = query.Data.Replace("measure_", "");
 
         if (type == "skip")
         {
-            await _bot.SendMessage(chatId, "Измерение пропущено.", cancellationToken: ct);
+            string msg = lang == "kk" ? "Өлшеу өткізіліп алды." : "Измерение пропущено.";
+            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
             return;
         }
 
         PendingInputs[userId] = type;
         await _state.SetPhaseAsync(userId, UserPhase.AwaitGlucoseValue);
 
-        await _bot.SendMessage(chatId, "Введите уровень сахара (например 5.6):", cancellationToken: ct);
+        string ask = lang == "kk"
+            ? "Қант деңгейін енгізіңіз (мысалы 5.6):"
+            : "Введите уровень сахара (например 5.6):";
+
+        await _bot.SendMessage(chatId, ask, cancellationToken: ct);
     }
 
-    // === Приём текстового значения ===
-    public async Task HandleValueInput(long chatId, string text, CancellationToken ct)
-    {
-        var msg = new Message
-        {
-            Chat = new Chat { Id = chatId },
-            From = new User { Id = chatId },
-            Text = text
-        };
-
-        await HandleTextInputAsync(msg, ct);
-    }
-
+    // ==========================
+    // Приём значения глюкозы
+    // ==========================
     public async Task HandleTextInputAsync(Message msg, CancellationToken ct)
     {
-        long chatId = msg.Chat.Id;
         long userId = msg.From!.Id;
+        long chatId = msg.Chat.Id;
+
+        var user = await _storage.LoadAsync(userId);
+        string lang = user.Language;
 
         if (await _state.GetPhaseAsync(userId) != UserPhase.AwaitGlucoseValue)
             return;
@@ -136,12 +158,12 @@ public class GlucoseModule
             System.Globalization.CultureInfo.InvariantCulture,
             out double val))
         {
-            await _bot.SendMessage(chatId, "Введите корректное число.", cancellationToken: ct);
+            string err = lang == "kk" ? "Дұрыс сан енгізіңіз." : "Введите корректное число.";
+            await _bot.SendMessage(chatId, err, cancellationToken: ct);
             return;
         }
 
-        var user = await _storage.LoadAsync(userId);
-
+        // сохранение
         user.Measurements.Add(new Measurement
         {
             Timestamp = DateTime.Now,
@@ -153,26 +175,47 @@ public class GlucoseModule
         PendingInputs.Remove(userId);
         await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
 
-        // → интерпретация
-        string status = InterpretGlucose(val, type, user.Language);
-        string advice = AdviceGlucose(val, type, user.Language);
+        // интерпретация
+        string status = InterpretGlucose(val, type, lang);
+        string advice = AdviceGlucose(val, type, lang);
 
-        string reply = user.Language == "kk"
-            ? $"Жазылды: *{val:F1}* ммоль/л ({type})\nҚорытынды: *{status}*\n{advice}"
-            : $"Записано: *{val:F1}* ммоль/л ({type})\nСтатус: *{status}*\n{advice}";
+        string reply = lang == "kk"
+            ? $"Жазылды: *{val:F1}* ммоль/л ({TypeToKz(type)})\nҚорытынды: *{status}*\n{advice}"
+            : $"Записано: *{val:F1}* ммоль/л ({TypeToRu(type)})\nСтатус: *{status}*\n{advice}";
 
         await _bot.SendMessage(chatId, reply, cancellationToken: ct);
-        await ShowMain(chatId, ct);
+
+        await ShowMain(chatId, lang, ct);
     }
 
-    // === История ===
-    public async Task ShowHistoryAsync(long chatId, CancellationToken ct)
+    private static string TypeToRu(string t) =>
+        t switch {
+            "fasting" => "натощак",
+            "after" => "после еды",
+            "time" => "по времени",
+            _ => t
+        };
+
+    private static string TypeToKz(string t) =>
+        t switch {
+            "fasting" => "аш қарынға",
+            "after" => "тамақтан кейін",
+            "time" => "уақыт бойынша",
+            _ => t
+        };
+
+    // ==========================
+    // История
+    // ==========================
+    public async Task ShowHistoryAsync(long chatId, string lang, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(chatId);
 
         if (user.Measurements.Count == 0)
         {
-            await _bot.SendMessage(chatId, "История пуста.", cancellationToken: ct);
+            await _bot.SendMessage(chatId,
+                lang == "kk" ? "Тарих бос." : "История пуста.",
+                cancellationToken: ct);
             return;
         }
 
@@ -180,15 +223,18 @@ public class GlucoseModule
             .OrderByDescending(x => x.Timestamp)
             .Take(10);
 
-        string text = "Последние измерения:\n\n" +
-                      string.Join("\n", list.Select(x =>
-                          $"{x.Timestamp:dd.MM HH:mm} — {x.Value:F1} ммоль/л ({x.Type})"));
+        string title = lang == "kk" ? "Соңғы өлшеулер:\n\n" : "Последние измерения:\n\n";
+
+        string text = title + string.Join("\n", list.Select(x =>
+            $"{x.Timestamp:dd.MM HH:mm} — {x.Value:F1} ммоль/л ({(lang == "kk" ? TypeToKz(x.Type) : TypeToRu(x.Type))})"));
 
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
     }
 
-    // === Статистика ===
-    public async Task ShowStatsAsync(long chatId, CancellationToken ct)
+    // ==========================
+    // Статистика
+    // ==========================
+    public async Task ShowStatsAsync(long chatId, string lang, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(chatId);
         var now = DateTime.Now;
@@ -199,7 +245,9 @@ public class GlucoseModule
 
         if (last7.Count == 0)
         {
-            await _bot.SendMessage(chatId, "Нет данных за последние 7 дней.", cancellationToken: ct);
+            await _bot.SendMessage(chatId,
+                lang == "kk" ? "Соңғы 7 күнде дерек жоқ." : "Нет данных за последние 7 дней.",
+                cancellationToken: ct);
             return;
         }
 
@@ -207,13 +255,9 @@ public class GlucoseModule
         double min = last7.Min(x => x.Value.GetValueOrDefault());
         double max = last7.Max(x => x.Value.GetValueOrDefault());
 
-
-        string text =
-            "📊 Статистика за 7 дней:\n" +
-            $"Среднее: {avg:F1} ммоль/л\n" +
-            $"Мин.: {min:F1} ммоль/л\n" +
-            $"Макс.: {max:F1} ммоль/л\n" +
-            $"Записей: {last7.Count}";
+        string text = lang == "kk"
+            ? $"📊 7 күндік статистика:\nОрташа: {avg:F1}\nМин.: {min:F1}\nМакс.: {max:F1}\nЗаписьтер: {last7.Count}"
+            : $"📊 Статистика за 7 дней:\nСреднее: {avg:F1}\nМин.: {min:F1}\nМакс.: {max:F1}\nЗаписей: {last7.Count}";
 
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
 
@@ -223,18 +267,20 @@ public class GlucoseModule
         await _bot.SendPhoto(
             chatId,
             new InputFileStream(new MemoryStream(chartBytes), "glucose.png"),
-            caption: "График:",
+            caption: lang == "kk" ? "График:" : "График:",
             cancellationToken: ct
         );
     }
 
-    // === Интерпретация уровня глюкозы (ВОЗ/ADA) ===
+    // ==========================
+    // Интерпретация
+    // ==========================
     private string InterpretGlucose(double v, string type, string lang)
     {
         string low = lang == "kk" ? "🟡 Төмен" : "🟡 Понижено";
         string norm = lang == "kk" ? "🟢 Норма" : "🟢 Норма";
         string high = lang == "kk" ? "🟠 Жоғары" : "🟠 Повышено";
-        string danger = lang == "kk" ? "🔴 Өте жоғары (гипергликемия)" : "🔴 Очень высокое (гипергликемия)";
+        string danger = lang == "kk" ? "🔴 Өте жоғары" : "🔴 Очень высокое";
 
         if (type == "fasting")
         {
@@ -252,31 +298,24 @@ public class GlucoseModule
             return danger;
         }
 
-        if (type == "time")
-        {
-            if (v < 3.9) return low;
-            if (v < 11.1) return norm;
-            return danger;
-        }
-
-        return norm;
+        return v < 3.9 ? low : v < 11.1 ? norm : danger;
     }
 
-    // === Советы по ВОЗ/ADA ===
+    // ==========================
+    // Советы
+    // ==========================
     private string AdviceGlucose(double v, string type, string lang)
     {
         if (v < 3.9)
             return lang == "kk"
-                ? "🟡 *Гипогликемия:* тәтті шай ішіңіз немесе 15 г тез көмірсу қабылдаңыз."
-                : "🟡 *Гипогликемия:* выпейте сладкий чай или примите 15 г быстрых углеводов.";
+                ? "🟡 Гипогликемия: тәтті шай ішіңіз немесе 15 г көмірсу қабылдаңыз."
+                : "🟡 Гипогликемия: выпейте сладкий чай или примите 15 г углеводов.";
 
         if (v >= 11.1)
             return lang == "kk"
-                ? "🔴 *Жоғары глюкоза:* су көп ішіңіз, өлшеуді қайталаңыз. Күшейсе – дәрігерге хабарласыңыз."
-                : "🔴 *Высокая глюкоза:* пейте воду и повторите измерение. Если сохраняется – обратитесь к врачу.";
+                ? "🔴 Глюкоза жоғары: су ішіңіз, өлшеуді қайталаңыз."
+                : "🔴 Глюкоза высокая: пейте воду и повторите измерение.";
 
-        return lang == "kk"
-            ? "🟢 Көрсеткіш қалыпты."
-            : "🟢 Значение в пределах нормы.";
+        return lang == "kk" ? "🟢 Көрсеткіш қалыпты." : "🟢 Значение в норме.";
     }
 }
