@@ -17,27 +17,34 @@ public class BotService
     {
         _bot = new TelegramBotClient(token);
 
-        // Сервисы
+        // === Сервисы ===
         var storage = new JsonStorageService();
         var state = new UserStateService(storage);
 
-        // Модули
+        // === Модули ===
         var glucose = new GlucoseModule(_bot, state, storage);
         var bu = new BreadUnitsModule(_bot, state, storage);
         var school = new DiabetesSchoolModule(_bot, state, storage);
 
-        // Handlers
+        // === Handlers ===
         _callbackHandler = new CallbackHandler(_bot, state, storage, glucose, bu, school);
-        _commandHandler = new CommandHandler(_bot, state, storage, glucose, bu, school, _callbackHandler);
 
+        // ВНИМАНИЕ: CommandHandler теперь принимает 6 аргументов, не 7
+        _commandHandler = new CommandHandler(
+            _bot,
+            state,
+            storage,
+            glucose,
+            bu,
+            school
+        );
+
+        // Связь обработчиков
         _callbackHandler.SetCommandHandler(_commandHandler);
 
         Logger.Info("[BOT] BotService создан");
     }
 
-    // ================================================================
-    //         Обработка обновлений от ВЕБ-ХУКА (единственный метод)
-    // ================================================================
     public async Task HandleWebhookAsync(Update update)
     {
         try
@@ -60,7 +67,7 @@ public class BotService
                 return;
             }
 
-            Logger.Info("[BOT] Неизвестный апдейт → игнор");
+            Logger.Info("[BOT] Неизвестный тип обновления → игнор");
         }
         catch (Exception ex)
         {
@@ -68,9 +75,6 @@ public class BotService
         }
     }
 
-    // ================================================================
-    //                     Установка вебхука
-    // ================================================================
     public async Task SetWebhookAsync(string url)
     {
         await _bot.DeleteWebhookAsync();
