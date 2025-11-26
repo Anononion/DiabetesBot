@@ -1,32 +1,44 @@
 [
-    {
-        "id": "apple",
-        "name": "Яблоко",
-        "carbsPer100": 11
-    },
-    {
-        "id": "banana",
-        "name": "Банан",
-        "carbsPer100": 23
-    },
-    {
-        "id": "pear",
-        "name": "Груша",
-        "carbsPer100": 12
-    },
-    {
-        "id": "potato",
-        "name": "Картофель",
-        "carbsPer100": 17
-    },
-    {
-        "id": "carrot",
-        "name": "Морковь",
-        "carbsPer100": 10
-    },
-    {
-        "id": "cabbage",
-        "name": "Капуста",
-        "carbsPer100": 6
-    }
+  {
+    "id": "apple",
+    "name_ru": "Яблоко",
+    "name_kk": "Алма",
+    "carbsPer100": 11
+  },
+  {
+    "id": "banana",
+    "name_ru": "Банан",
+    "name_kk": "Банан",
+    "carbsPer100": 23
+  },
+  {
+    "id": "pear",
+    "name_ru": "Груша",
+    "name_kk": "Алмұрт",
+    "carbsPer100": 10
+  },
+  {
+    "id": "orange",
+    "name_ru": "Апельсин",
+    "name_kk": "Апельсин",
+    "carbsPer100": 8
+  },
+  {
+    "id": "potato",
+    "name_ru": "Картофель",
+    "name_kk": "Картоп",
+    "carbsPer100": 17
+  },
+  {
+    "id": "carrot",
+    "name_ru": "Морковь",
+    "name_kk": "Сәбіз",
+    "carbsPer100": 9
+  },
+  {
+    "id": "cabbage",
+    "name_ru": "Капуста",
+    "name_kk": "Орамжапырақ",
+    "carbsPer100": 6
+  }
 ]
