@@ -1,9 +1,8 @@
-﻿using Telegram.Bot;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Services;
 using DiabetesBot.Modules;
-using DiabetesBot.Models;
 using DiabetesBot.Utils;
 
 namespace DiabetesBot.Handlers;
@@ -17,7 +16,6 @@ public class CommandHandler
     private readonly GlucoseModule _glucose;
     private readonly BreadUnitsModule _bu;
     private readonly DiabetesSchoolModule _school;
-
     private readonly CallbackHandler _callbackHandler;
 
     public CommandHandler(
@@ -36,281 +34,234 @@ public class CommandHandler
         _bu = bu;
         _school = school;
         _callbackHandler = callbackHandler;
-
-        Logger.Info("[CMD] CommandHandler создан");
     }
 
-    // ============================================================
-    // TEXT HANDLER
-    // ============================================================
+    // =======================================================
+    // ГЛАВНЫЕ ТЕКСТОВЫЕ КОМАНДЫ
+    // =======================================================
     public async Task HandleMessageAsync(Message msg, CancellationToken ct)
     {
         if (msg.Text is null)
-        {
-            Logger.Info("[CMD] HandleMessageAsync: msg.Text is null, игнорируем");
             return;
-        }
 
         long chatId = msg.Chat.Id;
         long userId = msg.From!.Id;
         string text = msg.Text;
 
-        Logger.Info($"[CMD] HandleMessageAsync: chatId={chatId}, userId={userId}, text='{text}'");
+        Logger.Info($"[CMD] Msg: '{text}' от {userId}");
 
-        // -------------- /start ----------------
+        // ------------------ /start ---------------------
         if (text.Equals("/start", StringComparison.OrdinalIgnoreCase))
         {
-            Logger.Info($"[CMD] /start от userId={userId}");
             await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
             await ShowLanguageMenuAsync(chatId, ct);
-            Logger.Info($"[CMD] /start обработан: перевели в фазу ChoosingLanguage и показали меню выбора языка");
             return;
         }
 
-        // текущая фаза
-        var phase = await _state.GetPhaseAsync(userId);
-        Logger.Info($"[CMD] Текущая фаза userId={userId}: {phase}");
+        // ------------------ /menu ----------------------
+        if (text.Equals("/menu", StringComparison.OrdinalIgnoreCase))
+        {
+            await ShowMainMenu(chatId, ct);
+            return;
+        }
 
-        // пока ждём выбор языка — запрещаем текст
+        // =======================================================
+        // Получаем язык пользователя
+        // =======================================================
+        var user = await _storage.LoadAsync(userId);
+        string lang = user.Language;
+
+        // =======================================================
+        // Фаза выбора языка
+        // =======================================================
+        var phase = await _state.GetPhaseAsync(userId);
+
         if (phase == UserPhase.ChoosingLanguage)
         {
-            Logger.Info($"[CMD] Пользователь {userId} в фазе ChoosingLanguage, отклоняем текст '{text}'");
-            await _bot.SendMessage(chatId, "Используйте кнопки ниже для выбора языка.", cancellationToken: ct);
+            await HandleLanguageChoice(chatId, userId, text, ct);
             return;
         }
 
-        // ========================================================
-        // ГЛОБАЛЬНЫЕ КНОПКИ, РАБОТАЮТ ИЗ ЛЮБОЙ ФАЗЫ (кроме ChoosingLanguage)
-        // ========================================================
-        switch (text)
+        // =======================================================
+        // Главное меню (двуязычное)
+        // =======================================================
+        if (phase == UserPhase.MainMenu)
         {
-    // ====== НАЗАД В МЕНЮ ======
-            case "⬅️ В меню":
-            case "⬅ Менюге":
-                {
-                    var user = await _storage.LoadAsync(userId);
-                    await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-                    await SendMainMenuAsync(chatId, user.Language, ct);
-                    return;
-                }
-
-    // ====== ГЛЮКОЗА ======
-            case "📈 Глюкометрия":
-            case "📈 Қант өлшеу":
-                {
-                    await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
-                    await _glucose.ShowMain(chatId, ct);
-                    return;
-                }
-
-    // ====== ХЕ ======
-                case "🍞 Хлебные единицы":
-                case "🍞 НБ (нан бірлігі)":
-                {
-                    await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
-                    await _bu.ShowMain(chatId, ct);
-                    return;
-                }
-
-    // ====== ШКОЛА ======
-                case "📚 Школа диабета":
-                case "📚 Диабет мектебі":
-                  {
-                    await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
-                    await _school.ShowMainMenuAsync(chatId, userId, ct);
-                    return;
-                }
-
-    // ====== НАСТРОЙКИ ======
-                case "⚙️ Настройки":
-                case "⚙️ Параметрлер":
-                {
-                    await ShowSettingsMenu(chatId, userId, ct);
-                    return;
-                }
-
-    // ====== АВТОРЫ ======
-            case "👤 Авторы":
-            case "👤 Авторлар":
-                {
-            await ShowAuthorsAsync(chatId, userId, ct);
-            return;
-                }
-
-    // ====== СМЕНА ЯЗЫКА ======
-            case "🌐 Сменить язык":
-            case "🌐 Тілді ауыстыру":
-                {
-                    await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
-                    await ShowLanguageMenuAsync(chatId, ct);
-                    return;
-                }
-
-    // ====== НАЗАД ======
-    case "⬅ Назад":
-    case "⬅ Артқа":
-        {
-            var user = await _storage.LoadAsync(userId);
-            await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-            await SendMainMenuAsync(chatId, user.Language, ct);
+            await HandleMainMenu(chatId, userId, text, lang, ct);
             return;
         }
-}
 
-
-        // ========================================================
-        // Phase routing (обработка оставшегося текста по фазам)
-        // ========================================================
-        switch (phase)
+        // =======================================================
+        // Глюкометрия
+        // =======================================================
+        if (phase == UserPhase.GlucoseMenu)
         {
-            case UserPhase.GlucoseMenu:
-                Logger.Info($"[CMD] Phase=GlucoseMenu, передаём текст в GlucoseModule.HandleMessage; text='{text}'");
-                await _glucose.HandleMessage(chatId, text, ct);
-                return;
-
-            case UserPhase.AwaitGlucoseValue:
-                Logger.Info($"[CMD] Phase=AwaitGlucoseValue, передаём текст в GlucoseModule.HandleValueInput; text='{text}'");
-                await _glucose.HandleValueInput(chatId, text, ct);
-                return;
-
-            case UserPhase.BreadUnits:
-                Logger.Info($"[CMD] Phase=BreadUnits, передаём текст в BreadUnitsModule (HandleMessage + HandleText); text='{text}'");
-                await _bu.HandleMessage(chatId, text, ct);
-                await _bu.HandleText(chatId, text, ct);
-                return;
-
-            case UserPhase.DiabetesSchool:
-                Logger.Info($"[CMD] Phase=DiabetesSchool, передаём текст в DiabetesSchoolModule.HandleTextAsync; text='{text}'");
-                await _school.HandleTextAsync(userId, chatId, text, ct);
-                return;
+            await _glucose.HandleMessage(chatId, text, ct);
+            return;
         }
 
-        // ========================================================
-        // fallback
-        // ========================================================
+        if (phase == UserPhase.AwaitGlucoseValue)
+        {
+            await _glucose.HandleTextInputAsync(msg, ct);
+            return;
+        }
+
+        // =======================================================
+        // Хлебные единицы
+        // =======================================================
+        if (phase == UserPhase.BreadUnits)
+        {
+            await _bu.HandleMessage(chatId, text, ct);
+            await _bu.HandleText(chatId, text, ct);
+            return;
+        }
+
+        // =======================================================
+        // Школа диабета
+        // =======================================================
+        if (phase == UserPhase.SchoolMenu)
+        {
+            await _school.HandleMessage(chatId, text, ct);
+            return;
+        }
+
+        // =======================================================
+        // Фолбэк
+        // =======================================================
         Logger.Info($"[CMD] Fallback: фаза={phase}, текст='{text}'");
-        await _bot.SendMessage(chatId, "Используйте меню.", cancellationToken: ct);
+        await _bot.SendMessage(chatId,
+            lang == "kk"
+                ? "Мәзірдегі батырмаларды қолданыңыз."
+                : "Используйте кнопки меню.",
+            cancellationToken: ct);
     }
 
-    // ============================================================
-    // CALLBACK
-    // ============================================================
-    public async Task HandleCallbackAsync(CallbackQuery query, CancellationToken ct)
+    // =======================================================
+    // ВЫБОР ЯЗЫКА
+    // =======================================================
+    private async Task ShowLanguageMenuAsync(long chatId, CancellationToken ct)
     {
-        Logger.Info($"[CMD] HandleCallbackAsync: data='{query.Data}', userId={query.From.Id}");
-        await _callbackHandler.HandleAsync(query, ct);
-    }
-
-    // ============================================================
-    // MAIN MENU
-    // ============================================================
-    public async Task SendMainMenuAsync(long chatId, string lang, CancellationToken ct)
-    {
-        string msg = lang == "kk"
-            ? "🏠 *Негізгі мәзір*"
-            : "🏠 *Главное меню*";
-
-        var kb = KeyboardBuilder.MainMenu(lang);
-
-        await _bot.SendMessage(chatId, msg, replyMarkup: kb, cancellationToken: ct);
-        // тут у тебя фаза по userId, но в этом методе только chatId — как и было раньше
-        await _state.SetPhaseAsync(chatId, UserPhase.MainMenu);
-    }
-
-    // ============================================================
-    // LANGUAGE MENU
-    // ============================================================
-    public async Task ShowLanguageMenuAsync(long chatId, CancellationToken ct)
-    {
-        Logger.Info($"[CMD] ShowLanguageMenuAsync: chatId={chatId}");
-
-        var kb = new InlineKeyboardMarkup(new[]
+        var kb = new ReplyKeyboardMarkup(new[]
         {
-            new[] { InlineKeyboardButton.WithCallbackData("🇷🇺 Русский", "lang_ru") },
-            new[] { InlineKeyboardButton.WithCallbackData("🇰🇿 Қазақ тілі", "lang_kk") }
-        });
+            new KeyboardButton[] { "🇷🇺 Русский", "🇰🇿 Қазақша" }
+        })
+        { ResizeKeyboard = true };
 
-        await _bot.SendMessage(
-            chatId,
+        await _bot.SendMessage(chatId,
             "Выберите язык / Тілді таңдаңыз:",
             replyMarkup: kb,
-            cancellationToken: ct
-        );
-
-        Logger.Info($"[CMD] Меню выбора языка отправлено chatId={chatId}");
+            cancellationToken: ct);
     }
 
-    // ============================================================
-    // SETTINGS
-    // ============================================================
-    public async Task ShowSettingsMenu(long chatId, long userId, CancellationToken ct)
+    private async Task HandleLanguageChoice(long chatId, long userId, string text, CancellationToken ct)
     {
+        string? chosenLang = text switch
+        {
+            "🇷🇺 Русский" => "ru",
+            "🇰🇿 Қазақша" => "kk",
+            _ => null
+        };
+
+        if (chosenLang == null)
+        {
+            await _bot.SendMessage(chatId, "Выберите язык кнопками.", cancellationToken: ct);
+            return;
+        }
+
         var user = await _storage.LoadAsync(userId);
-        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
+        user.Language = chosenLang;
+        await _storage.SaveAsync(user);
 
-        string title = lang == "kk"
-            ? "Параметрлер"
-            : "Настройки";
-
-        var kb = KeyboardBuilder.Menu(
-            lang == "kk"
-                ? new[] { "🌐 Тілді ауыстыру", "👤 Авторлар" }
-                : new[] { "🌐 Сменить язык", "👤 Авторы" },
-            lang,
-            showBack: true
-        );
-
-        await _bot.SendMessage(chatId, title, replyMarkup: kb, cancellationToken: ct);
+        await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
+        await ShowMainMenu(chatId, ct);
     }
 
-    // ============================================================
-    // AUTHORS
-    // ============================================================
-    public async Task ShowAuthorsAsync(long chatId, long userId, CancellationToken ct)
+    // =======================================================
+    // ГЛАВНОЕ МЕНЮ (двуязычное)
+    // =======================================================
+    private async Task ShowMainMenu(long chatId, CancellationToken ct)
     {
-        var user = await _storage.LoadAsync(userId);
-        string lang = string.IsNullOrWhiteSpace(user.Language) ? "ru" : user.Language;
+        var user = await _storage.LoadAsync(chatId);
+        string lang = user.Language;
 
-        string title = lang == "kk"
-            ? "👥 *Жоба авторлары*"
-            : "👥 *Авторы проекта*";
+        string t_glucose = lang == "kk" ? "📈 Қант өлшеу" : "📈 Глюкометрия";
+        string t_bu = lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
+        string t_school = lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета";
+        string t_settings = lang == "kk" ? "⚙️ Баптаулар" : "⚙️ Настройки";
 
-        string devDesc = lang == "kk"
-            ? "👨‍💻 @Batyr_dot_bat\nЖобаның әзірлеушісі"
-            : "👨‍💻 @Batyr_dot_bat\nРазработчик проекта";
+        var kb = new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { t_glucose, t_bu },
+            new KeyboardButton[] { t_school, t_settings }
+        })
+        { ResizeKeyboard = true };
 
-        string medicDesc = lang == "kk"
-            ? "👩‍⚕️ @Adiya_ua\nМедициналық эксперт\nОсы анименің ең жақсы қызы"
-            : "👩‍⚕️ @Adiya_ua\nМедицинский эксперт\nЛучшая девочка этого аниме";
+        await _bot.SendMessage(chatId,
+            lang == "kk" ? "Негізгі мәзір:" : "Главное меню:",
+            replyMarkup: kb,
+            cancellationToken: ct);
+    }
 
-        // Пути картинок
-        string basePath = AppContext.BaseDirectory;
-        string devPath = Path.Combine(basePath, "Data", "authors", "Dev.jpg");
-        string medicPath = Path.Combine(basePath, "Data", "authors", "Medic.jpg");
+    private async Task HandleMainMenu(long chatId, long userId, string text, string lang, CancellationToken ct)
+    {
+        string t_glucose = lang == "kk" ? "📈 Қант өлшеу" : "📈 Глюкометрия";
+        string t_bu = lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
+        string t_school = lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета";
+        string t_settings = lang == "kk" ? "⚙️ Баптаулар" : "⚙️ Настройки";
 
-        // Отправляем заголовок
-        await _bot.SendMessage(chatId, title, cancellationToken: ct);
+        if (text == t_glucose)
+        {
+            await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
+            await _glucose.ShowMain(chatId, lang, ct);
+            return;
+        }
 
-        // Отправляем фото + подписи
-        if (System.IO.File.Exists(devPath))
-            await _bot.SendPhoto(chatId,
-                InputFile.FromStream(System.IO.File.OpenRead(devPath)),
-                caption: devDesc,
-                cancellationToken: ct);
+        if (text == t_bu)
+        {
+            await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
+            await _bu.ShowMain(chatId, lang, ct);
+            return;
+        }
 
-        if (System.IO.File.Exists(medicPath))
-            await _bot.SendPhoto(chatId,
-                InputFile.FromStream(System.IO.File.OpenRead(medicPath)),
-                caption: medicDesc,
-                cancellationToken: ct);
+        if (text == t_school)
+        {
+            await _state.SetPhaseAsync(userId, UserPhase.SchoolMenu);
+            await _school.ShowMain(chatId, lang, ct);
+            return;
+        }
 
-        // Кнопка Назад (локализованная)
-        await _bot.SendMessage(
-            chatId,
-            lang == "kk" ? "⬅ Артқа" : "⬅️ Назад",
-            replyMarkup: KeyboardBuilder.Back(lang),
-            cancellationToken: ct
-        );
+        if (text == t_settings)
+        {
+            await ShowSettings(chatId, lang, ct);
+            return;
+        }
+
+        // fallback
+        await _bot.SendMessage(chatId,
+            lang == "kk" ? "Мәзірден таңдаңыз." : "Выберите пункт меню.",
+            cancellationToken: ct);
+    }
+
+    // =======================================================
+    // Настройки
+    // =======================================================
+    private async Task ShowSettings(long chatId, string lang, CancellationToken ct)
+    {
+        string t_lang = lang == "kk" ? "🌐 Тілді ауыстыру" : "🌐 Сменить язык";
+        string t_auth = lang == "kk" ? "👤 Авторлар" : "👤 Авторы";
+        string t_back = lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
+
+        var kb = new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { t_lang },
+            new KeyboardButton[] { t_auth },
+            new KeyboardButton[] { t_back }
+        })
+        { ResizeKeyboard = true };
+
+        await _bot.SendMessage(chatId,
+            lang == "kk" ? "Баптаулар:" : "Настройки:",
+            replyMarkup: kb,
+            cancellationToken: ct);
     }
 }
-
