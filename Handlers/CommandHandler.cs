@@ -84,86 +84,79 @@ public class CommandHandler
         // ========================================================
         switch (text)
         {
-            // назад в главное меню (откуда угодно)
+    // ====== НАЗАД В МЕНЮ ======
             case "⬅️ В меню":
-            {
-                Logger.Info($"[CMD] Нажата кнопка '⬅️ В меню' userId={userId}");
-                var user = await _storage.LoadAsync(userId);
-                await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-                await SendMainMenuAsync(chatId, user.Language, ct);
-                Logger.Info($"[CMD] Пользователь {userId} возвращён в главное меню");
-                return;
-            }
+            case "⬅ Менюге":
+                {
+                    var user = await _storage.LoadAsync(userId);
+                    await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
+                    await SendMainMenuAsync(chatId, user.Language, ct);
+                    return;
+                }
 
-            // Глюкометрия
+    // ====== ГЛЮКОЗА ======
             case "📈 Глюкометрия":
-            case "📈 Глюкоза":
-            {
-                Logger.Info($"[CMD] Нажата кнопка '📈 Глюкометрия' userId={userId}");
-                await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
-                await _glucose.ShowMain(chatId, ct);
-                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу GlucoseMenu");
-                return;
-            }
+            case "📈 Қант өлшеу":
+                {
+                    await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
+                    await _glucose.ShowMain(chatId, ct);
+                    return;
+                }
 
-            // Хлебные единицы
-            case "🍞 Хлебные единицы":
-            case "🍞 Нан бірліктері":
-            {
-                Logger.Info($"[CMD] Нажата кнопка '🍞 Хлебные единицы' userId={userId}");
-                await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
-                await _bu.ShowMain(chatId, ct);
-                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу BreadUnits");
-                return;
-            }
+    // ====== ХЕ ======
+                case "🍞 Хлебные единицы":
+                case "🍞 НБ (нан бірлігі)":
+                {
+                    await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
+                    await _bu.ShowMain(chatId, ct);
+                    return;
+                }
 
-            // Школа диабета
-            case "📚 Школа диабета":
-            case "📚 Қант диабеті мектебі":
-            {
-                Logger.Info($"[CMD] Нажата кнопка '📚 Школа диабета' userId={userId}");
-                await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
-                await _school.ShowMainMenuAsync(chatId, userId, ct);
-                Logger.Info($"[CMD] Пользователь {userId} переведён в фазу DiabetesSchool и показано меню школы диабета");
-                return;
-            }
+    // ====== ШКОЛА ======
+                case "📚 Школа диабета":
+                case "📚 Диабет мектебі":
+                  {
+                    await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
+                    await _school.ShowMainMenuAsync(chatId, userId, ct);
+                    return;
+                }
 
-            // Настройки
-            case "⚙️ Настройки":
-            case "⚙️ Параметрлер":
-            {
-                await ShowSettingsMenu(chatId, userId, ct);
-                return;
-            }
+    // ====== НАСТРОЙКИ ======
+                case "⚙️ Настройки":
+                case "⚙️ Параметрлер":
+                {
+                    await ShowSettingsMenu(chatId, userId, ct);
+                    return;
+                }
 
-            // Авторы
+    // ====== АВТОРЫ ======
             case "👤 Авторы":
             case "👤 Авторлар":
-            {
-                await ShowAuthorsAsync(chatId, userId, ct);
-                return;
-            }
+                {
+            await ShowAuthorsAsync(chatId, userId, ct);
+            return;
+                }
 
-            // Смена языка
+    // ====== СМЕНА ЯЗЫКА ======
             case "🌐 Сменить язык":
             case "🌐 Тілді ауыстыру":
-            {
-                await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
-                await ShowLanguageMenuAsync(chatId, ct);
-                return;
-            }
+                {
+                    await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
+                    await ShowLanguageMenuAsync(chatId, ct);
+                    return;
+                }
 
-            // кнопка "Назад" для под-меню (авторы и т.п.)
-            case "⬅ Назад":
-            case "⬅️ Назад":
-            case "⬅ Артқа":
-            {
-                var user = await _storage.LoadAsync(userId);
-                await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-                await SendMainMenuAsync(chatId, user.Language, ct);
-                return;
-            }
+    // ====== НАЗАД ======
+    case "⬅ Назад":
+    case "⬅ Артқа":
+        {
+            var user = await _storage.LoadAsync(userId);
+            await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
+            await SendMainMenuAsync(chatId, user.Language, ct);
+            return;
         }
+}
+
 
         // ========================================================
         // Phase routing (обработка оставшегося текста по фазам)
@@ -320,3 +313,4 @@ public class CommandHandler
         );
     }
 }
+
