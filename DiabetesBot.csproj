@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
 
-    <!-- отключаем автоматическое добавление файлов -->
+    <!-- отключаем авто-добавление файлов, чтобы управлять вручную -->
     <EnableDefaultContentItems>false</EnableDefaultContentItems>
   </PropertyGroup>
 
@@ -15,11 +15,9 @@
     <PackageReference Include="SkiaSharp" Version="2.88.6" />
   </ItemGroup>
 
+  <!-- Включаем ВСЕ файлы Data (json, логи, users, school, любые вложенные) -->
   <ItemGroup>
-    <!-- включаем папку Data вручную -->
-    <Content Include="Data/**/*" CopyToOutputDirectory="Always" />
+    <None Include="Data\**\*" CopyToOutputDirectory="Always" />
   </ItemGroup>
 
 </Project>
-
-
