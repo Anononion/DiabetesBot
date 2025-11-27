@@ -2,6 +2,8 @@ using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Models;
+using Telegram.Bot.Types;
+
 
 namespace DiabetesBot.Modules;
 
@@ -127,4 +129,5 @@ public class DiabetesSchoolModule
 }
 
 }
+
 
