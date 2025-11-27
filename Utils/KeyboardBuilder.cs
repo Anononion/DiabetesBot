@@ -5,56 +5,70 @@ namespace DiabetesBot.Utils;
 
 public static class KeyboardBuilder
 {
-    // ============================
-    //   ГЛАВНОЕ МЕНЮ
-    // ============================
+    // =====================================================
+    //  ВОССТАНОВЛЕННЫЕ КНОПКИ (для совместимости)
+    // =====================================================
 
-    // СТАРАЯ версия (чтобы не ломать существующий код) — по умолчанию русский
+    public static string Button_Glucose(string lang)
+        => lang == "kk" ? "📈 Қант өлшеу" : "📈 Глюкометрия";
+
+    public static string Button_BreadUnits(string lang)
+        => lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
+
+    public static string Button_School(string lang)
+        => lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета";
+
+    public static string Button_Settings(string lang)
+        => lang == "kk" ? "⚙️ Баптаулар" : "⚙️ Настройки";
+
+    public static string Button_Back(string lang)
+        => lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
+
+
+    // =====================================================
+    //  ГЛАВНОЕ МЕНЮ (новая версия)
+    // =====================================================
+
     public static ReplyKeyboardMarkup MainMenu()
         => MainMenu("ru");
 
-    // НОВАЯ версия с языком
     public static ReplyKeyboardMarkup MainMenu(string lang)
     {
-        // нормализуем язык
         lang = (lang ?? "ru").ToLowerInvariant();
 
         if (lang == "kk")
         {
             return new ReplyKeyboardMarkup(new[]
             {
-                new KeyboardButton[] { "📈 Қант өлшеу", "🍞 НБ (нан бірлігі)" },
-                new KeyboardButton[] { "📚 Диабет мектебі", "⚙️ Баптаулар" }
+                new KeyboardButton[] { Button_Glucose(lang), Button_BreadUnits(lang) },
+                new KeyboardButton[] { Button_School(lang), Button_Settings(lang) }
             })
             {
                 ResizeKeyboard = true
             };
         }
 
-        // русский (по умолчанию)
         return new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "📈 Глюкометрия", "🍞 Хлебные единицы" },
-            new KeyboardButton[] { "📚 Школа диабета", "⚙️ Настройки" }
+            new KeyboardButton[] { Button_Glucose(lang), Button_BreadUnits(lang) },
+            new KeyboardButton[] { Button_School(lang), Button_Settings(lang) }
         })
         {
             ResizeKeyboard = true
         };
     }
 
-    // ============================
-    //   КНОПКА "В МЕНЮ"
-    // ============================
 
-    // старая версия — для совместимости (русский текст)
+    // =====================================================
+    //  КНОПКА "НАЗАД / В МЕНЮ"
+    // =====================================================
+
     public static ReplyKeyboardMarkup BackToMenu()
         => BackToMenu("ru");
 
-    // новая версия с языком
     public static ReplyKeyboardMarkup BackToMenu(string lang)
     {
-        lang = (lang ?? "ru").ToLowerInvariant();
-        string caption = lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
+        string caption = Button_Back(lang);
 
         return new ReplyKeyboardMarkup(new[]
         {
@@ -66,31 +80,27 @@ public static class KeyboardBuilder
         };
     }
 
-    // Альтернативное имя, если захочется:
     public static ReplyKeyboardMarkup Back(string lang) => BackToMenu(lang);
 
-    // ============================
-    //   ВЕРТИКАЛЬНОЕ МЕНЮ (Reply)
-    // ============================
 
-    // старая сигнатура (без языка) — для совместимости
+    // =====================================================
+    //  ВЕРТИКАЛЬНОЕ МЕНЮ (ReplyKeyboard)
+    // =====================================================
+
     public static ReplyKeyboardMarkup Menu(string[] buttons, bool showBack = true)
         => Menu(buttons, "ru", showBack);
 
-    // новая сигнатура с языком
     public static ReplyKeyboardMarkup Menu(string[] buttons, string lang, bool showBack = true)
     {
         lang = (lang ?? "ru").ToLowerInvariant();
+
         var rows = new List<List<KeyboardButton>>();
 
         foreach (var btn in buttons)
             rows.Add(new List<KeyboardButton> { new KeyboardButton(btn) });
 
         if (showBack)
-        {
-            string backText = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
-            rows.Add(new List<KeyboardButton> { new KeyboardButton(backText) });
-        }
+            rows.Add(new List<KeyboardButton> { new KeyboardButton(lang == "kk" ? "⬅ Артқа" : "⬅ Назад") });
 
         return new ReplyKeyboardMarkup(rows)
         {
@@ -98,15 +108,14 @@ public static class KeyboardBuilder
         };
     }
 
-    // ============================
-    //   INLINE-СПИСОК (С BACK)
-    // ============================
 
-    // старая версия — без языка (по умолчанию русский текст "⬅ Назад")
+    // =====================================================
+    //  INLINE-СПИСОК С КНОПКОЙ "НАЗАД"
+    // =====================================================
+
     public static InlineKeyboardMarkup List(string[] items, bool showBack = true)
         => List(items, "ru", showBack);
 
-    // новая — с языком
     public static InlineKeyboardMarkup List(string[] items, string lang, bool showBack = true)
     {
         lang = (lang ?? "ru").ToLowerInvariant();
@@ -121,20 +130,17 @@ public static class KeyboardBuilder
         if (showBack)
         {
             string backText = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
-            rows.Add(new[]
-            {
-                InlineKeyboardButton.WithCallbackData(backText, "BACK")
-            });
+            rows.Add(new[] { InlineKeyboardButton.WithCallbackData(backText, "BACK") });
         }
 
         return new InlineKeyboardMarkup(rows);
     }
 
-    // ============================
-    //   ВЫБОР ЯЗЫКА (INLINE)
-    // ============================
 
-    // То, чего раньше не хватало и из-за чего был CS0117 (LanguageChoice не найден)
+    // =====================================================
+    //  ВЫБОР ЯЗЫКА
+    // =====================================================
+
     public static InlineKeyboardMarkup LanguageChoice()
     {
         return new InlineKeyboardMarkup(new[]
