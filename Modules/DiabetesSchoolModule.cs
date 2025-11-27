@@ -1,9 +1,10 @@
-using DiabetesBot.Models;
-using DiabetesBot.Utils;
+using System.Text;
 using Newtonsoft.Json;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using DiabetesBot.Models;
+using DiabetesBot.Utils;
+using DiabetesBot.Services;
 
 namespace DiabetesBot.Modules;
 
@@ -11,194 +12,136 @@ public class DiabetesSchoolModule
 {
     private readonly ITelegramBotClient _bot;
 
-    // Два набора уроков
-    private Dictionary<string, Lesson> _lessonsRu = new();
-    private Dictionary<string, Lesson> _lessonsKk = new();
+    // lessons["1"]["1.1"] = "text"
+    private Dictionary<string, Dictionary<string, string>> _lessonsRu = new();
+    private Dictionary<string, Dictionary<string, string>> _lessonsKk = new();
 
     public DiabetesSchoolModule(ITelegramBotClient bot)
     {
         _bot = bot;
-
-        LoadLessons("ru");
-        LoadLessons("kk");
+        LoadLessons();
     }
 
-    // ============================================================
-    // ЗАГРУЗКА УРОКОВ
-    // ============================================================
-    private void LoadLessons(string lang)
+    private void LoadLessons()
     {
-        string file = Path.Combine("Data", $"lang_{lang}.json");
+        string ruPath = Path.Combine("Data", "lang_ru.json");
+        string kkPath = Path.Combine("Data", "lang_kk.json");
 
-        if (!File.Exists(file))
-        {
-            BotLogger.Warn($"[DS] file missing: {file}");
-            return;
-        }
+        var ruJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(File.ReadAllText(ruPath));
+        var kkJson = JsonConvert.DeserializeObject<Dictionary<string, object>>(File.ReadAllText(kkPath));
 
-        var root = JsonConvert.DeserializeObject<Dictionary<string, object>>(
-            File.ReadAllText(file)
-        );
-
-        if (!root.ContainsKey("ds.lessons"))
-        {
-            BotLogger.Warn($"[DS] no ds.lessons in {file}");
-            return;
-        }
-
-        // структура: "ds.lessons" → { "1": { "1.1": "...", "1.2": "..." }, ... }
-        var lessonsRaw = JsonConvert.DeserializeObject<
-            Dictionary<string, Dictionary<string, string>>
-        >(root["ds.lessons"].ToString());
-
-        var dict = new Dictionary<string, Lesson>();
-
-        foreach (var group in lessonsRaw)
-        {
-            string lessonId = group.Key;
-
-            // сортируем страницы по ключу (1.1, 1.2…)
-            var pages = group.Value
-                .OrderBy(p => p.Key)
-                .Select(p => p.Value)
-                .ToList();
-
-            string title = ExtractTitle(pages[0]);
-
-            dict[lessonId] = new Lesson
-            {
-                Id = lessonId,
-                Title = title,
-                Pages = pages
-            };
-        }
-
-        if (lang == "ru")
-            _lessonsRu = dict;
-        else
-            _lessonsKk = dict;
-
-        BotLogger.Info($"[DS] Lessons loaded ({lang}): {dict.Count}");
+        _lessonsRu = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(ruJson["ds.lessons"].ToString()!)!;
+        _lessonsKk = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(kkJson["ds.lessons"].ToString()!)!;
     }
 
-    private string ExtractTitle(string page)
-    {
-        // первая строка первой страницы — заголовок
-        var firstLine = page.Split('\n').First().Trim();
-        return firstLine.Length > 0 ? firstLine : "Урок";
-    }
+    private Dictionary<string, Dictionary<string, string>> GetLessons(string lang)
+        => lang == "kz" ? _lessonsKk : _lessonsRu;
 
-    // ============================================================
-    // ВЫБОР НАБОРА УРОКОВ ПО ЯЗЫКУ ПОЛЬЗОВАТЕЛЯ
-    // ============================================================
-    private Dictionary<string, Lesson> GetLessons(UserData user)
-    {
-        return user.Language == "kz" ? _lessonsKk : _lessonsRu;
-    }
-
-    // ============================================================
-    // ГЛАВНОЕ МЕНЮ ШКОЛЫ
-    // ============================================================
+    // ============================
+    // MAIN MENU OF SCHOOL
+    // ============================
     public async Task ShowMainMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
-        var lessons = GetLessons(user);
+        var lessons = GetLessons(user.Language);
 
-        var ik = new InlineKeyboardMarkup(
-            lessons.Select(l =>
-                InlineKeyboardButton.WithCallbackData(l.Value.Title, $"school_open:{l.Key}")
-            )
-        );
+        var menu = lessons.Keys
+            .OrderBy(k => int.Parse(k))
+            .Select(k => new[] { $"📘 Урок {k}" })
+            .ToList();
 
-        string title = user.Language == "kz" ? "Диабет мектебі:" : "Школа диабета:";
+        menu.Add(new[] { user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад" });
 
-        await _bot.SendMessage(chatId, title, replyMarkup: ik, cancellationToken: ct);
+        await _bot.SendMessage(
+            chatId,
+            user.Language == "kz" ? "Диабет мектебі:" : "Школа диабета:",
+            replyMarkup: new ReplyKeyboardMarkup(menu) { ResizeKeyboard = true },
+            cancellationToken: ct);
     }
 
-    // ============================================================
-    // ТЕКСТОВЫЕ КНОПКИ (Назад)
-    // ============================================================
+    // ============================
+    // HANDLE TEXT (BUTTONS)
+    // ============================
     public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
-        if (text.Contains("Назад") || text.Contains("Артқа"))
+        if (text == "⬅️ Назад" || text == "⬅️ Артқа")
         {
             user.Phase = BotPhase.MainMenu;
             return;
         }
 
-        await ShowMainMenuAsync(user, chatId, ct);
+        // Example: "📘 Урок 2"
+        if (text.StartsWith("📘"))
+        {
+            string num = text.Replace("📘 Урок", "").Trim();
+            if (int.TryParse(num, out int lessonNumber))
+            {
+                await OpenLessonAsync(user, chatId, lessonNumber, ct);
+            }
+            return;
+        }
     }
 
-    // ============================================================
-    // ОТКРЫТИЕ УРОКА
-    // ============================================================
-    public async Task OpenLessonAsync(UserData user, long chatId, string lessonId, CancellationToken ct)
+    // ============================
+    // OPEN LESSON (PAGE 1.1)
+    // ============================
+    public async Task OpenLessonAsync(UserData user, long chatId, int lesson, CancellationToken ct)
     {
-        var lessons = GetLessons(user);
+        user.CurrentLesson = lesson;
+        user.LessonPage = 0;
 
-        if (!lessons.ContainsKey(lessonId))
+        await ShowLessonPageAsync(user, chatId, ct);
+    }
+
+    // ============================
+    // SHOW LESSON PAGE (1.1 → 1.2 → ...)
+    // ============================
+    public async Task ShowLessonPageAsync(UserData user, long chatId, CancellationToken ct)
+    {
+        var lessons = GetLessons(user.Language);
+
+        string lessonKey = user.CurrentLesson.ToString();
+
+        if (!lessons.ContainsKey(lessonKey))
         {
             await _bot.SendMessage(chatId, "Ошибка: урок не найден.", cancellationToken: ct);
             return;
         }
 
-        user.CurrentLesson = lessonId;
-        user.LessonPage = 0;
-        user.Phase = BotPhase.DiabetesSchool;
+        var pages = lessons[lessonKey]
+            .OrderBy(k => double.Parse(k.Key.Replace($"{lessonKey}.", "")))
+            .ToList();
 
-        await ShowLessonPageAsync(user, chatId, ct);
-    }
+        if (user.LessonPage < 0) user.LessonPage = 0;
+        if (user.LessonPage >= pages.Count) user.LessonPage = pages.Count - 1;
 
-    // ============================================================
-    // ПОКАЗ СТРАНИЦЫ
-    // ============================================================
-    public async Task ShowLessonPageAsync(UserData user, long chatId, CancellationToken ct)
-    {
-        var lessons = GetLessons(user);
-        var lesson = lessons[user.CurrentLesson];
+        string pageText = pages[user.LessonPage].Value;
 
-        int page = Math.Clamp(user.LessonPage, 0, lesson.Pages.Count - 1);
-        string content = lesson.Pages[page];
+        var buttons = new List<KeyboardButton[]>();
 
-        // кнопки навигации
-        var buttons = new List<InlineKeyboardButton[]>();
+        if (user.LessonPage > 0)
+            buttons.Add(new[] { new KeyboardButton(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад") });
 
-        if (page > 0)
-            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("⬅️", "school_prev") });
+        if (user.LessonPage < pages.Count - 1)
+            buttons.Add(new[] { new KeyboardButton(user.Language == "kz" ? "➡️ Келесі" : "➡️ Далее") });
 
-        if (page < lesson.Pages.Count - 1)
-            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("➡️", "school_next") });
+        buttons.Add(new[]
+        {
+            new KeyboardButton(user.Language == "kz" ? "📚 Мәзірге оралу" : "📚 В меню школы")
+        });
 
         await _bot.SendMessage(
             chatId,
-            $"<b>{lesson.Title}</b>\n\n{content}",
-            parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
-            replyMarkup: new InlineKeyboardMarkup(buttons),
-            cancellationToken: ct
-        );
+            pageText,
+            replyMarkup: new ReplyKeyboardMarkup(buttons) { ResizeKeyboard = true },
+            cancellationToken: ct);
     }
 
-    // ============================================================
-    // СТРАНИЦА НАЗАД
-    // ============================================================
-    public async Task PrevPageAsync(UserData user, long chatId, CancellationToken ct)
+    // ============================
+    // OFFSET PAGE (NEXT/PREV)
+    // ============================
+    public async Task OffsetPageAsync(UserData user, long chatId, int delta, CancellationToken ct)
     {
-        if (user.LessonPage > 0)
-            user.LessonPage--;
-
-        await ShowLessonPageAsync(user, chatId, ct);
-    }
-
-    // ============================================================
-    // СТРАНИЦА ВПЕРЕД
-    // ============================================================
-    public async Task NextPageAsync(UserData user, long chatId, CancellationToken ct)
-    {
-        var lessons = GetLessons(user);
-        var count = lessons[user.CurrentLesson].Pages.Count;
-
-        if (user.LessonPage < count - 1)
-            user.LessonPage++;
-
+        user.LessonPage += delta;
         await ShowLessonPageAsync(user, chatId, ct);
     }
 }
