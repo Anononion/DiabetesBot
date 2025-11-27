@@ -23,16 +23,15 @@ var jsonOptions = new JsonSerializerOptions
 
 var app = builder.Build();
 
-//
-// === ВАЖНО: настроить PORT ===
-//
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{port}");
 
-//
-// === Webhook endpoint ===
-//
+// ========= КРИТИЧЕСКОЕ ДОБАВЛЕНИЕ =========
+app.UseRouting();
+app.UseEndpoints(_ => { });
+// ==========================================
+
 app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService bot) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
