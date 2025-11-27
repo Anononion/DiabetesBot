@@ -29,7 +29,7 @@ public class BotService
         // === Handlers ===
         _callbackHandler = new CallbackHandler(_bot, state, storage, glucose, bu, school);
 
-        // ВАЖНО: подаём callback в качестве 7 аргумента
+        // callback → command
         _commandHandler = new CommandHandler(
             _bot,
             state,
@@ -40,10 +40,9 @@ public class BotService
             _callbackHandler
         );
 
-        // Даем callback'у ссылку на command handler
         _callbackHandler.SetCommandHandler(_commandHandler);
 
-        Logger.Info("[BOT] BotService создан");
+        BotLogger.Info("[BOT] BotService создан");
     }
 
     public async Task HandleWebhookAsync(Update update)
@@ -68,11 +67,11 @@ public class BotService
                 return;
             }
 
-            Logger.Info("[BOT] Неизвестный тип обновления → игнор");
+            BotLogger.Info("[BOT] Неизвестный тип обновления → игнор");
         }
         catch (Exception ex)
         {
-            Logger.Error("[BOT] Ошибка обработки апдейта", ex);
+            BotLogger.Error("[BOT] Ошибка обработки апдейта", ex);
         }
     }
 
@@ -80,6 +79,6 @@ public class BotService
     {
         await _bot.DeleteWebhookAsync();
         await _bot.SetWebhookAsync(url);
-        Logger.Info($"Webhook set to: {url}");
+        BotLogger.Info($"Webhook set to: {url}");
     }
 }
