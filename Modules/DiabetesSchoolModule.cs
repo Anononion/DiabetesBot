@@ -121,18 +121,84 @@ public class DiabetesSchoolModule
             replyMarkup: new ReplyKeyboardMarkup(buttons) { ResizeKeyboard = true },
             cancellationToken: ct);
     }
-    public async Task HandleTextAsync(UserData user, Message msg, CancellationToken ct)
+    public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
 {
-    // ВРЕМЕННАЯ ЗАГЛУШКА — чтобы сборка прошла!
-    // Потом заменим реальной логикой.
-    await _bot.SendMessage(msg.Chat.Id,
-        user.Language == "kz" 
-            ? "Қате команда. Сабақты таңдаңыз." 
-            : "Неизвестная команда. Выберите урок.",
+    var lessons = GetBlock(user.Language);
+
+    // === Вернуться назад в главное меню школы ===
+    if (text == "⬅️ Назад" || text == "⬅️ Артқа")
+    {
+        user.Phase = BotPhase.MainMenu;
+        await ShowMainMenuAsync(user, chatId, ct);
+        return;
+    }
+
+    // === Выбор урока: "Урок 1" / "Сабақ 1" ===
+    if (text.StartsWith("Урок") || text.StartsWith("Сабақ"))
+    {
+        var num = text.Split(' ').Last();
+        if (int.TryParse(num, out int lesson))
+        {
+            user.TempLessonId = lesson.ToString();
+            user.Phase = BotPhase.DiabetesSchool;
+            await ShowLessonMenuAsync(user, chatId, lesson, ct);
+            return;
+        }
+    }
+
+    // === Выбор подурока: например "1.2", "2.3" ===
+    if (text.Contains('.'))
+    {
+        var parts = text.Split('.');
+        if (parts.Length == 2)
+        {
+            string lessonId = parts[0];
+            string subId = parts[1];
+
+            user.TempLessonId = lessonId;
+            user.TempSubId = subId;
+
+            await ShowLessonPageAsync(user, chatId, lessonId, subId, ct);
+            return;
+        }
+    }
+
+    // === Нажата кнопка "Далее" ===
+    if (text == "Далее" || text == "Алға")
+    {
+        if (user.TempLessonId != null && user.TempSubId != null)
+        {
+            var lessonsDict = GetBlock(user.Language);
+
+            var subs = lessonsDict[user.TempLessonId].Keys.ToList();
+            int index = subs.IndexOf(user.TempSubId);
+
+            if (index + 1 < subs.Count)
+            {
+                string nextSub = subs[index + 1];
+                user.TempSubId = nextSub;
+
+                await ShowLessonPageAsync(user, chatId, user.TempLessonId, nextSub, ct);
+                return;
+            }
+        }
+
+        await _bot.SendMessage(chatId, 
+            user.Language == "kz" ? "Сабақ аяқталды." : "Урок завершён.", 
+            cancellationToken: ct);
+
+        return;
+    }
+
+    // === Если ничего не подошло ===
+    await _bot.SendMessage(chatId,
+        user.Language == "kz" ? "Бұйрық түсініксіз." : "Команда не распознана.",
         cancellationToken: ct);
 }
 
+
 }
+
 
 
 
