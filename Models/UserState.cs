@@ -1,10 +1,12 @@
-using System.Collections.Generic;
-
 namespace DiabetesBot.Models;
 
 public class UserState
 {
-    public UserStep Step { get; set; } = UserStep.None;
+    public long UserId { get; set; }
 
-    public Dictionary<string, string> Temp { get; set; } = new();
+    // текущая фаза
+    public BotPhase Phase { get; set; } = BotPhase.MainMenu;
+
+    // выбранный язык
+    public string Language { get; set; } = "ru";
 }
