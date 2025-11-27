@@ -1,4 +1,4 @@
-﻿using SkiaSharp;
+using SkiaSharp;
 using DiabetesBot.Models;
 
 namespace DiabetesBot.Utils;
@@ -84,7 +84,12 @@ public static class ChartGenerator
             IsAntialias = true
         };
 
-        var sorted = points.OrderBy(p => p.Timestamp).ToList();
+        // >>>>>>>>>>>>> ИСПРАВЛЕНО: сортировка по Time
+        var sorted = points.OrderBy(p => p.Time).ToList();
+
+        if (sorted.Count == 0)
+            return Array.Empty<byte>();
+
         float stepX = (chartRight - chartLeft) / (float)(sorted.Count - 1);
 
         float prevX = 0, prevY = 0;
@@ -102,11 +107,11 @@ public static class ChartGenerator
                 canvas.DrawLine(prevX, prevY, x, y, linePaint);
 
             // подпись значения
-            string val = sorted[i].Value?.ToString("F1") ?? "0";
+            string val = sorted[i].Value.ToString("F1");
             canvas.DrawText(val, x - 20, y - 12, valuePaint);
 
             // подпись даты снизу
-            string date = sorted[i].Timestamp.ToString("dd.MM");
+            string date = sorted[i].Time.ToString("dd.MM");
             canvas.DrawText(date, x - 25, chartBottom + 30, datePaint);
 
             prevX = x;
