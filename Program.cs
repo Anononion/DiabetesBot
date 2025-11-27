@@ -64,10 +64,10 @@ var botService = app.Services.GetRequiredService<BotService>();
 
 // Render всегда даёт переменную RENDER_EXTERNAL_URL
 var externalUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")
-    ?? "diacare-2x9i.onrender.com";
+    ?? "https://diacare-2x9i.onrender.com";
 
 var webhookUrl =
-    $"https://{externalUrl}/webhook/{Environment.GetEnvironmentVariable("BOT_TOKEN")}";
+    $"{externalUrl}/webhook/{Environment.GetEnvironmentVariable("BOT_TOKEN")}";
 
 await botService.SetWebhookAsync(webhookUrl);
 
@@ -75,3 +75,4 @@ BotLogger.Info($"Bot started on port {port}");
 
 // =============== RUN =============================
 app.Run();
+
