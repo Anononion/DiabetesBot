@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using DiabetesBot.Models;
 using DiabetesBot.Utils;
 using DiabetesBot.Utils.Crypto;
@@ -7,7 +7,6 @@ namespace DiabetesBot.Services;
 
 public class JsonStorageService
 {
-    // ---- определяем корень проекта ----
     private static string ProjectRoot
     {
         get
@@ -126,7 +125,7 @@ public class JsonStorageService
         SaveUserFile(userId, "xe_history.json", list);
     }
 
-    // ---------------- STATIC JSONS (foods.json, categories) ----------------
+    // ---------------- STATIC JSONS ----------------
 
     public List<FoodItem> LoadFoodItems()
     {
@@ -138,7 +137,7 @@ public class JsonStorageService
             throw new FileNotFoundException($"foods.json НЕ найден: {path}");
 
         var raw = File.ReadAllText(path);
-        Logger.Info($"[BU] foods.json RAW:\n{raw}");
+        BotLogger.Info($"[BU] foods.json RAW:\n{raw}");
         return JsonSerializer.Deserialize<List<FoodItem>>(raw)!;
     }
 
