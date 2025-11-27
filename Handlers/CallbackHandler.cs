@@ -1,4 +1,3 @@
-using DiabetesBot.Models;
 using DiabetesBot.Services;
 using DiabetesBot.Modules;
 using DiabetesBot.Utils;
@@ -44,109 +43,66 @@ public class CallbackHandler
         var user = StateStore.Get(userId);
 
         // ------------------------------------------------------------
-        // ГЛЮКОЗА
-        // ------------------------------------------------------------
-        if (data == "glu_fasting")
-        {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "Натощак"), ct);
-            return;
-        }
-
-        if (data == "glu_after")
-        {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "После еды"), ct);
-            return;
-        }
-
-        if (data == "glu_time")
-        {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "По времени"), ct);
-            return;
-        }
-
-        if (data == "glu_skip")
-        {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "Пропустить"), ct);
-            return;
-        }
-
-        // ------------------------------------------------------------
-        // ХЕ – Категории
+        // ХЕ – Категория
         // ------------------------------------------------------------
         if (data.StartsWith("xe_cat:"))
         {
-            string id = data.Split(':')[1];
-
-            string? title = FoodCache.GetCategoryTitle(id, user.Language);
-
-            if (title != null)
-            {
-                await _commands.HandleMessageAsync(
-                    FakeTextMessage(chatId, userId, title), ct);
-            }
+            string category = data.Substring("xe_cat:".Length);
+            await _xe.ShowItemsByCategoryAsync(user, chatId, category, ct);
             return;
         }
 
         // ------------------------------------------------------------
-        // ХЕ – Конкретный продукт
+        // ХЕ – Продукт
         // ------------------------------------------------------------
-        if (data.StartsWith("xe_food:"))
+        if (data.StartsWith("xe_item:"))
         {
-            string id = data.Split(':')[1];
-
-            string? title = FoodCache.GetFoodTitle(id);
-
-            if (title != null)
-            {
-                await _commands.HandleMessageAsync(
-                    FakeTextMessage(chatId, userId, title), ct);
-            }
+            string itemName = data.Substring("xe_item:".Length);
+            await _xe.SelectItemAsync(user, chatId, itemName, ct);
             return;
         }
 
         // ------------------------------------------------------------
-        // ШКОЛА ДИАБЕТА – УРОК
+        // ШКОЛА ДИАБЕТА – Переходы
         // ------------------------------------------------------------
         if (data.StartsWith("school_lesson:"))
         {
-            int lessonId = int.Parse(data.Split(':')[1]);
+            // data: school_lesson:1
+            string lessonIdStr = data.Substring("school_lesson:".Length);
 
-            string title = _school.GetLessonButtonText(lessonId, user.Language);
-
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, title), ct);
-
+            if (int.TryParse(lessonIdStr, out int lessonId))
+            {
+                user.CurrentLesson = lessonId;
+                user.LessonPage = 0;
+                await _school.ShowLessonPageAsync(user, chatId, ct);
+            }
             return;
         }
 
         if (data == "school_next")
         {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "Далее"), ct);
+            user.LessonPage++;
+            await _school.ShowLessonPageAsync(user, chatId, ct);
             return;
         }
 
         if (data == "school_prev")
         {
-            await _commands.HandleMessageAsync(
-                FakeTextMessage(chatId, userId, "Назад"), ct);
+            user.LessonPage--;
+            await _school.ShowLessonPageAsync(user, chatId, ct);
             return;
         }
 
         // ------------------------------------------------------------
-        // Если что-то неизвестно — игнор
+        // UNKNOWN
         // ------------------------------------------------------------
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
 
-    // ================================================================
-    // UTILITY – создаём Message, как будто пользователь отправил текст
-    // ================================================================
-    private static Message FakeTextMessage(long chatId, long userId, string text)
+    // ============================================================
+    // UTILS
+    // ============================================================
+    private static Message FakeText(long chatId, long userId, string text)
     {
         return new Message
         {
