@@ -26,10 +26,6 @@ public class CallbackHandler
         _school = school;
     }
 
-    // ============================================================
-    // MAIN ENTRY
-    // ============================================================
-
     public async Task HandleCallbackAsync(CallbackQuery q, CancellationToken ct)
     {
         long userId = q.From.Id;
@@ -40,34 +36,50 @@ public class CallbackHandler
 
         try
         {
-            // ============================
-            // ГЛЮКОЗА
-            // ============================
-            if (data.StartsWith("GLU_"))
+            switch (user.Phase)
             {
-                await _glucose.HandleCallbackAsync(user, q, ct);
-                return;
+                // ============================
+                // ГЛЮКОЗА
+                // ============================
+                case BotPhase.Glucose:
+                case BotPhase.Glucose_TypeChoice:
+                case BotPhase.Glucose_ValueInput:
+                    if (data.StartsWith("GLU_"))
+                    {
+                        await _glucose.HandleCallbackAsync(user, q, ct);
+                        return;
+                    }
+                    break;
+
+                // ============================
+                // ХЕ
+                // ============================
+                case BotPhase.BreadUnits:
+                case BotPhase.BreadUnits_EnterGrams:
+                    if (data.StartsWith("BU_"))
+                    {
+                        await _bread.HandleCallbackAsync(user, q, ct);
+                        return;
+                    }
+                    break;
+
+                // ============================
+                // ШКОЛА ДИАБЕТА
+                // ============================
+                case BotPhase.DiabetesSchool:
+                    if (data.StartsWith("DS_"))
+                    {
+                        await _school.HandleCallbackAsync(user, q, ct);
+                        return;
+                    }
+                    break;
+
+                default:
+                    BotLogger.Warn($"[CALLBACK] Unexpected phase → ignoring. Phase={user.Phase}");
+                    break;
             }
 
-            // ============================
-            // ХЛЕБНЫЕ ЕДИНИЦЫ
-            // ============================
-            if (data.StartsWith("BU_"))
-            {
-                await _bread.HandleCallbackAsync(user, q, ct);
-                return;
-            }
-
-            // ============================
-            // ШКОЛА ДИАБЕТА
-            // ============================
-            if (data.StartsWith("DS_"))
-            {
-                await _school.HandleCallbackAsync(user, q, ct);
-                return;
-            }
-
-            BotLogger.Warn($"[CALLBACK] Unknown callback prefix: '{data}'");
+            BotLogger.Warn($"[CALLBACK] Unknown callback data '{data}'");
         }
         catch (Exception ex)
         {
