@@ -129,7 +129,7 @@ public class GlucoseModule
     // ============================================================
     // STEP 2 — ENTER VALUE
     // ============================================================
-    private async Task AskValueAsync(UserData user, long chatId, CancellationToken ct)
+    public async Task AskValueAsync(UserData user, long chatId, CancellationToken ct)
     {
         user.Phase = BotPhase.Glucose_ValueInput;
 
@@ -252,5 +252,6 @@ public class GlucoseModule
         return lang == "kz" ? "Қалыпты." : "Норма.";
     }
 }
+
 
 
