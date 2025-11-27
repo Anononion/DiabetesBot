@@ -33,4 +33,8 @@ public class UserData
 
     // --- ГЛЮКОЗА ---
     public List<GlucoseEntry> Glucose { get; set; } = new();
+
+    public string? SelectedFood { get; set; }
+
 }
+
