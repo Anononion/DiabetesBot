@@ -2,6 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using DiabetesBot.Services;
 using DiabetesBot.Modules;
+using DiabetesBot.Models;
 using DiabetesBot.Utils;
 
 namespace DiabetesBot.Handlers;
@@ -34,11 +35,11 @@ public class CommandHandler
         _school = school;
         _callbackHandler = callbackHandler;
 
-        BotLogger.Info("[CMD] CommandHandler создан");
+        BotLogger.Info("[CMD] CommandHandler initialized");
     }
 
     // ============================================================
-    // ОСНОВНОЙ ВХОД ДЛЯ MESSAGE
+    // MAIN ENTRY FOR MESSAGE
     // ============================================================
     public async Task HandleMessageAsync(Message msg, CancellationToken ct)
     {
@@ -52,19 +53,19 @@ public class CommandHandler
         var user = await _storage.LoadAsync(userId);
         string lang = user.Language ?? "ru";
 
-        // ============================================================
-        // 1) Если ждём ВЫБОРА ЯЗЫКА → игнорируем сообщения
-        // ============================================================
         var phase = await _state.GetPhaseAsync(userId);
+
+        // ============================================================
+        // 1) IF WAITING FOR LANGUAGE → IGNORE TEXT (WAIT CALLBACK)
+        // ============================================================
         if (phase == UserPhase.ChoosingLanguage)
         {
-            // Ничего не отвечаем — ждём callback-кнопку
-            BotLogger.Info("[CMD] ChoosingLanguage: игнорируем текст");
+            BotLogger.Info("[CMD] Ignoring text during ChoosingLanguage");
             return;
         }
 
         // ============================================================
-        // 2) Команды
+        // 2) /start — language selection
         // ============================================================
         if (text == "/start")
         {
@@ -73,13 +74,12 @@ public class CommandHandler
         }
 
         // ============================================================
-        // 3) Главные кнопки меню
+        // 3) MAIN MENU BUTTONS
         // ============================================================
-
         if (text == (lang == "kk" ? "📈 Қандағы қант" : "📈 Глюкоза"))
         {
-            await _state.SetPhaseAsync(userId, UserPhase.Glucose);
-            await _glucose.ShowMainMenu(chatId, lang, ct);
+            await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
+            await _glucose.ShowMain(chatId, lang, ct);
             return;
         }
 
@@ -104,7 +104,22 @@ public class CommandHandler
         }
 
         // ============================================================
-        // 4) Поддержка БУ (ожидание веса)
+        // 4) GLUCOSE FLOW
+        // ============================================================
+        if (phase == UserPhase.GlucoseMenu)
+        {
+            await _glucose.HandleMessage(chatId, text, lang, ct);
+            return;
+        }
+
+        if (phase == UserPhase.AwaitGlucoseValue)
+        {
+            await _glucose.HandleValueInput(msg, ct);
+            return;
+        }
+
+        // ============================================================
+        // 5) BREAD UNITS FLOW
         // ============================================================
         if (phase == UserPhase.BreadUnits)
         {
@@ -113,7 +128,7 @@ public class CommandHandler
         }
 
         // ============================================================
-        // 5) Поддержка уроков
+        // 6) DIABETES SCHOOL FLOW
         // ============================================================
         if (phase == UserPhase.DiabetesSchool)
         {
@@ -122,27 +137,28 @@ public class CommandHandler
         }
 
         // ============================================================
-        // 6) Если непонятно — возвращаем главное меню
+        // 7) DEFAULT → MAIN MENU
         // ============================================================
         await SendMainMenuAsync(chatId, lang, ct);
     }
 
     // ============================================================
-    // СТАРТ
+    // START
     // ============================================================
     private async Task StartAsync(long chatId, long userId, CancellationToken ct)
     {
         var user = await _storage.LoadAsync(userId);
 
-        if (string.IsNullOrWhiteSpace(user.Language))
+        if (user.Language is null or "" || user.Phase == UserPhase.New)
         {
             await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
 
-            await _bot.SendMessage(chatId,
+            await _bot.SendMessage(
+                chatId,
                 "Выберите язык / Тілді таңдаңыз:",
                 replyMarkup: KeyboardBuilder.LanguageChoice(),
-                cancellationToken: ct);
-
+                cancellationToken: ct
+            );
             return;
         }
 
@@ -163,7 +179,7 @@ public class CommandHandler
     }
 
     // ============================================================
-    // ГЛАВНОЕ МЕНЮ
+    // MAIN MENU
     // ============================================================
     public async Task SendMainMenuAsync(long chatId, string lang, CancellationToken ct)
     {
