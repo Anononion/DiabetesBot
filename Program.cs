@@ -8,6 +8,7 @@ using DiabetesBot.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// =============== SERVICES ======================
 builder.Services.AddSingleton<BotService>(sp =>
 {
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
@@ -23,26 +24,28 @@ var jsonOptions = new JsonSerializerOptions
 
 var app = builder.Build();
 
-// === PORT ===
+// =============== PORT ===========================
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{port}");
 
-// === ROUTING ===
 app.UseRouting();
 
-// === WEBHOOK ROUTE ===
+// =============== WEBHOOK ENDPOINT ===============
 app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService bot) =>
 {
-    if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
+    var expected = Environment.GetEnvironmentVariable("BOT_TOKEN");
+
+    if (token != expected)
         return Results.Unauthorized();
 
     try
     {
         var update = await JsonSerializer.DeserializeAsync<Update>(ctx.Request.Body, jsonOptions);
+
         if (update == null)
         {
-            BotLogger.Error("[WEBHOOK] Update == null");
+            BotLogger.Error("[WEBHOOK] update == null");
             return Results.Ok();
         }
 
@@ -56,16 +59,19 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
     return Results.Ok();
 });
 
-// === INSTALL WEBHOOK ON START ===
+// =============== SET WEBHOOK =====================
 var botService = app.Services.GetRequiredService<BotService>();
 
+// Render всегда даёт переменную RENDER_EXTERNAL_URL
 var externalUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")
     ?? "diacare-2x9i.onrender.com";
 
-var webhookUrl = $"https://{externalUrl}/webhook/{Environment.GetEnvironmentVariable("BOT_TOKEN")}";
+var webhookUrl =
+    $"https://{externalUrl}/webhook/{Environment.GetEnvironmentVariable("BOT_TOKEN")}";
 
 await botService.SetWebhookAsync(webhookUrl);
 
 BotLogger.Info($"Bot started on port {port}");
 
+// =============== RUN =============================
 app.Run();
