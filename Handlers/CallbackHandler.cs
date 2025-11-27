@@ -1,6 +1,7 @@
 using DiabetesBot.Models;
-using DiabetesBot.Utils;
+using DiabetesBot.Services;
 using DiabetesBot.Modules;
+using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -9,112 +10,149 @@ namespace DiabetesBot.Handlers;
 public class CallbackHandler
 {
     private readonly ITelegramBotClient _bot;
+    private readonly CommandHandler _commands;
+
     private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _breadUnits;
+    private readonly BreadUnitsModule _xe;
     private readonly DiabetesSchoolModule _school;
 
     public CallbackHandler(
         ITelegramBotClient bot,
+        CommandHandler commands,
         GlucoseModule glucose,
-        BreadUnitsModule breadUnits,
+        BreadUnitsModule xe,
         DiabetesSchoolModule school)
     {
         _bot = bot;
+        _commands = commands;
         _glucose = glucose;
-        _breadUnits = breadUnits;
+        _xe = xe;
         _school = school;
     }
 
-    public async Task HandleCallbackAsync(CallbackQuery q, CancellationToken ct)
+    // ============================================================
+    // MAIN ENTRY
+    // ============================================================
+    public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
     {
-        long userId = q.From.Id;
-        long chatId = q.Message!.Chat.Id;
-        string data = q.Data ?? "";
+        long userId = cb.From.Id;
+        long chatId = cb.Message!.Chat.Id;
+        string data = cb.Data ?? "";
+
+        BotLogger.Info($"[CB] DATA = {data}");
 
         var user = StateStore.Get(userId);
 
-        BotLogger.Info($"[CB] DATA: '{data}' from {userId}");
-
-        // ============================================================
-        // ГЛЮКОЗА: выбор типа измерения
-        // ============================================================
-        if (data.StartsWith("GLU_TYPE|"))
+        // ------------------------------------------------------------
+        // ГЛЮКОЗА
+        // ------------------------------------------------------------
+        if (data == "glu_fasting")
         {
-            string type = data.Split('|')[1];
-            user.TempMeasurementType = type;
-            user.Phase = BotPhase.Glucose_ValueInput;
-
-            await _glucose.AskValueAsync(user, chatId, ct);
-
-            await _bot.AnswerCallbackQuery(q.Id);
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "Натощак"), ct);
             return;
         }
 
-        if (data == "GLU_SKIP")
+        if (data == "glu_after")
         {
-            user.Phase = BotPhase.Glucose;
-
-            await _bot.SendMessage(chatId,
-                user.Language == "kz" ? "Өткізілді." : "Пропущено.",
-                cancellationToken: ct);
-
-            await _bot.AnswerCallbackQuery(q.Id);
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "После еды"), ct);
             return;
         }
 
-        // ============================================================
-        // ХЕ: выбор продукта
-        // ============================================================
-        if (data.StartsWith("XE_CAT|"))
+        if (data == "glu_time")
         {
-            string cat = data.Split('|')[1];
-
-            await _breadUnits.ShowItemsByCategoryAsync(user, chatId, cat, ct);
-
-            await _bot.AnswerCallbackQuery(q.Id);
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "По времени"), ct);
             return;
         }
 
-        if (data.StartsWith("XE_ITEM|"))
+        if (data == "glu_skip")
         {
-            string itemId = data.Split('|')[1];
-
-            await _breadUnits.SelectItemAsync(user, chatId, itemId, ct);
-
-            await _bot.AnswerCallbackQuery(q.Id);
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "Пропустить"), ct);
             return;
         }
 
-        // ============================================================
-        // ШКОЛА ДИАБЕТА: уроки, страницы
-        // ============================================================
-        if (data.StartsWith("SCH_LESSON|"))
+        // ------------------------------------------------------------
+        // ХЕ – Категории
+        // ------------------------------------------------------------
+        if (data.StartsWith("xe_cat:"))
         {
-            string lessonId = data.Split('|')[1];
+            string id = data.Split(':')[1];
 
-            await _school.OpenLessonAsync(user, chatId, lessonId, ct);
+            string? title = FoodCache.GetCategoryTitle(id, user.Language);
 
-            await _bot.AnswerCallbackQuery(q.Id);
+            if (title != null)
+            {
+                await _commands.HandleMessageAsync(
+                    FakeTextMessage(chatId, userId, title), ct);
+            }
             return;
         }
 
-        if (data.StartsWith("SCH_PAGE|"))
+        // ------------------------------------------------------------
+        // ХЕ – Конкретный продукт
+        // ------------------------------------------------------------
+        if (data.StartsWith("xe_food:"))
         {
-            string[] parts = data.Split('|');
-            string lessonId = parts[1];
-            int page = int.Parse(parts[2]);
+            string id = data.Split(':')[1];
 
-            await _school.ShowLessonPageAsync(user, chatId, lessonId, page, ct);
+            string? title = FoodCache.GetFoodTitle(id);
 
-            await _bot.AnswerCallbackQuery(q.Id);
+            if (title != null)
+            {
+                await _commands.HandleMessageAsync(
+                    FakeTextMessage(chatId, userId, title), ct);
+            }
             return;
         }
 
-        // ============================================================
-        // НЕИЗВЕСТНЫЙ CALLBACK
-        // ============================================================
-        BotLogger.Warn($"[CB] UNKNOWN → '{data}'");
-        await _bot.AnswerCallbackQuery(q.Id, "Unknown action");
+        // ------------------------------------------------------------
+        // ШКОЛА ДИАБЕТА – УРОК
+        // ------------------------------------------------------------
+        if (data.StartsWith("school_lesson:"))
+        {
+            int lessonId = int.Parse(data.Split(':')[1]);
+
+            string title = _school.GetLessonButtonText(lessonId, user.Language);
+
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, title), ct);
+
+            return;
+        }
+
+        if (data == "school_next")
+        {
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "Далее"), ct);
+            return;
+        }
+
+        if (data == "school_prev")
+        {
+            await _commands.HandleMessageAsync(
+                FakeTextMessage(chatId, userId, "Назад"), ct);
+            return;
+        }
+
+        // ------------------------------------------------------------
+        // Если что-то неизвестно — игнор
+        // ------------------------------------------------------------
+        BotLogger.Warn($"[CB] Unknown callback: {data}");
+    }
+
+    // ================================================================
+    // UTILITY – создаём Message, как будто пользователь отправил текст
+    // ================================================================
+    private static Message FakeTextMessage(long chatId, long userId, string text)
+    {
+        return new Message
+        {
+            Chat = new Chat { Id = chatId },
+            From = new User { Id = userId },
+            Text = text
+        };
     }
 }
-
