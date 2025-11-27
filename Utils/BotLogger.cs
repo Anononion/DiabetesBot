@@ -1,34 +1,50 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading;
+
 namespace DiabetesBot.Utils;
 
 public static class BotLogger
 {
+    // Уровни
     public enum Level { TRACE = 0, DEBUG = 1, INFO = 2, WARN = 3, ERROR = 4, FATAL = 5 }
 
+    // Настройки
     private static readonly string LogDir = Environment.GetEnvironmentVariable("LOG_PATH") ?? Path.Combine("Data", "logs");
     private static readonly bool ToFile = (Environment.GetEnvironmentVariable("LOG_TO_FILE") ?? "true").Equals("true", StringComparison.OrdinalIgnoreCase);
     private static readonly bool ToConsole = (Environment.GetEnvironmentVariable("LOG_TO_CONSOLE") ?? "true").Equals("true", StringComparison.OrdinalIgnoreCase);
     private static readonly Level MinLevel = Enum.TryParse<Level>(Environment.GetEnvironmentVariable("LOG_LEVEL") ?? "INFO", true, out var lvl) ? lvl : Level.INFO;
 
-    private const long MaxFileBytes = 10L * 1024 * 1024;
+    private const long MaxFileBytes = 10L * 1024 * 1024; // 10 MB
     private static readonly object FileLock = new();
 
+    // Контекст логов (AsyncLocal)
     private static readonly AsyncLocal<LogContext?> CurrentCtx = new();
+
+    // Очередь для записи (чтобы не блокировать)
     private static readonly BlockingCollection<string> WriteQueue = new(new ConcurrentQueue<string>());
     private static readonly Thread WriterThread;
 
+    // JSON options
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    static BotLogger()
+    static Logger()
     {
         Directory.CreateDirectory(LogDir);
+
+        // фоновая нить записи
         WriterThread = new Thread(WriterLoop) { IsBackground = true, Name = "LoggerWriter" };
         WriterThread.Start();
     }
 
+    // Публичные методы
     public static IDisposable Scope(string operation, long? userId = null, long? chatId = null, string? correlationId = null)
     {
         var prev = CurrentCtx.Value;
@@ -46,6 +62,7 @@ public static class BotLogger
     public static void Fatal(string msg, Exception? ex = null, object? data = null) =>
         Write(Level.FATAL, msg, Merge(data, new { exception = ex?.ToString() }));
 
+    // Внутреннее
     private static void Write(Level level, string message, object? data)
     {
         if (level < MinLevel) return;
@@ -83,12 +100,14 @@ public static class BotLogger
         {
             lock (FileLock)
             {
+                // Daily/size rotation
                 var target = GetLogPath();
                 if (!string.Equals(target, currentPath, StringComparison.OrdinalIgnoreCase) ||
                     new FileInfo(currentPath).Length > MaxFileBytes)
                 {
                     file.Flush();
                     try { (file.BaseStream as FileStream)?.Dispose(); } catch { }
+
                     currentPath = target;
                 }
             }
@@ -105,9 +124,11 @@ public static class BotLogger
     {
         if (a is null) return b;
         if (b is null) return a;
+        // грубо: объединяем как строку
         return new { a, b };
     }
 
+    // Модели контекста/скоупа
     private sealed class LogContext
     {
         public static readonly LogContext Empty = new(null, null, null, null);
@@ -140,14 +161,15 @@ public static class BotLogger
         {
             _prev = prev;
             Context = new LogContext(operation, userId, chatId, correlationId);
-            BotLogger.Write(Level.TRACE, $"→ {operation} start", null);
+            // стартовая запись
+            Write(Level.TRACE, $"→ {operation} start", null);
         }
 
         public void Dispose()
         {
             if (_disposed) return;
             _disposed = true;
-            BotLogger.Write(Level.TRACE, $"← {Context.Operation} end", new { elapsed_ms = Context.ElapsedMs() });
+            Write(Level.TRACE, $"← {Context.Operation} end", new { elapsed_ms = Context.ElapsedMs() });
             CurrentCtx.Value = _prev;
         }
     }
