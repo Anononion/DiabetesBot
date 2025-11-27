@@ -28,9 +28,13 @@ public class BreadUnitsModule
         string catPath = Path.Combine(baseDir, "Data", "food_categories.json");
         string foodsPath = Path.Combine(baseDir, "Data", "foods.json");
 
-        _categories = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(catPath))!;
-        _foods = JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(foodsPath))!;
+        _categories = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(
+            System.IO.File.ReadAllText(catPath))!;
+
+        _foods = JsonSerializer.Deserialize<List<FoodItem>>(
+            System.IO.File.ReadAllText(foodsPath))!;
     }
+
 
     // ============================================================
     // MAIN MENU
@@ -232,3 +236,4 @@ public class BreadUnitsModule
         }
     }
 }
+
