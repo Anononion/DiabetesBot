@@ -3,14 +3,22 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 using DiabetesBot.Handlers;
+using DiabetesBot.Modules;
 using DiabetesBot.Utils;
+using DiabetesBot.Services;
 
 namespace DiabetesBot;
 
 public class BotService
 {
-    private readonly TelegramBotClient _bot;
-    private readonly CommandHandler _commandHandler;
+    private readonly ITelegramBotClient _bot;
+
+    private readonly CommandHandler _cmd;
+    private readonly CallbackHandler _cb;
+
+    private readonly GlucoseModule _glucose;
+    private readonly BreadUnitsModule _bread;
+    private readonly DiabetesSchoolModule _school;
 
     public BotService(string token)
     {
@@ -18,67 +26,59 @@ public class BotService
 
         _bot = new TelegramBotClient(token);
 
-        // Наш новый, чистый хэндлер
-        _commandHandler = new CommandHandler(_bot);
+        // === Создаём модули ===
+        _glucose = new GlucoseModule(_bot);
+        _bread = new BreadUnitsModule(_bot);
+        _school = new DiabetesSchoolModule(_bot);
 
-        BotLogger.Info("[BOT] BotService initialized");
+        // === Создаём хэндлеры ===
+        _cmd = new CommandHandler(_bot, _glucose, _bread, _school);
+        _cb = new CallbackHandler(_bot, _glucose, _bread, _school);
+
+        BotLogger.Info("[BOT] BotService initialized successfully");
     }
 
     // ============================================================
-    // HANDLE UPDATE
+    // MAIN UPDATE ENTRY
     // ============================================================
 
     public async Task HandleWebhookAsync(Update update)
     {
-        BotLogger.Info($"[BOT] UPDATE received: type={update.Type}");
-
         try
         {
-            if (update.Message != null)
+            BotLogger.Info($"[BOT] Update received: type={update.Type}");
+
+            if (update.Type == UpdateType.Message && update.Message != null)
             {
-                BotLogger.Info(
-                    $"[BOT] Message: text='{update.Message.Text}', chat={update.Message.Chat.Id}, user={update.Message.From?.Id}"
-                );
-
-                await _commandHandler.HandleMessageAsync(
-                    update.Message,
-                    CancellationToken.None
-                );
-
-                BotLogger.Info("[BOT] Message processed");
+                await _cmd.HandleMessageAsync(update.Message, CancellationToken.None);
                 return;
             }
 
-            if (update.CallbackQuery != null)
+            if (update.Type == UpdateType.CallbackQuery && update.CallbackQuery != null)
             {
-                BotLogger.Info(
-                    $"[BOT] Callback: data='{update.CallbackQuery.Data}', from={update.CallbackQuery.From.Id}"
-                );
-
-                // позже сделаем новый CallbackHandler, если нужно
-                BotLogger.Warn("[BOT] No callback handler implemented yet");
+                await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
                 return;
             }
 
-            BotLogger.Warn("[BOT] Unknown update — ignored");
+            BotLogger.Warn("[BOT] Unknown update type → ignore");
         }
         catch (Exception ex)
         {
-            BotLogger.Error("[BOT] Error while handling update", ex);
+            BotLogger.Error("[BOT] ERROR during update handling", ex);
         }
     }
 
     // ============================================================
-    // SET WEBHOOK
+    // WEBHOOK MANAGEMENT
     // ============================================================
 
     public async Task SetWebhookAsync(string url)
     {
-        BotLogger.Info($"[BOT] Setting webhook: {url}");
+        BotLogger.Info($"[BOT] Setting webhook to: {url}");
 
         await _bot.DeleteWebhookAsync(dropPendingUpdates: true);
         await _bot.SetWebhookAsync(url);
 
-        BotLogger.Info("[BOT] Webhook installed");
+        BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
