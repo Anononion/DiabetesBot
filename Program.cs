@@ -23,15 +23,15 @@ var jsonOptions = new JsonSerializerOptions
 
 var app = builder.Build();
 
+// === PORT ===
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
 app.Urls.Clear();
 app.Urls.Add($"http://0.0.0.0:{port}");
 
-// ========= КРИТИЧЕСКОЕ ДОБАВЛЕНИЕ =========
+// === ROUTING ===
 app.UseRouting();
-app.UseEndpoints(_ => { });
-// ==========================================
 
+// === WEBHOOK ROUTE ===
 app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService bot) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
@@ -55,6 +55,16 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
 
     return Results.Ok();
 });
+
+// === INSTALL WEBHOOK ON START ===
+var botService = app.Services.GetRequiredService<BotService>();
+
+var externalUrl = Environment.GetEnvironmentVariable("RENDER_EXTERNAL_URL")
+    ?? "diacare-2x9i.onrender.com";
+
+var webhookUrl = $"https://{externalUrl}/webhook/{Environment.GetEnvironmentVariable("BOT_TOKEN")}";
+
+await botService.SetWebhookAsync(webhookUrl);
 
 BotLogger.Info($"Bot started on port {port}");
 
