@@ -115,4 +115,16 @@ public class DiabetesSchoolModule
             replyMarkup: new ReplyKeyboardMarkup(buttons) { ResizeKeyboard = true },
             cancellationToken: ct);
     }
+    public async Task HandleTextAsync(UserData user, Message msg, CancellationToken ct)
+{
+    // ВРЕМЕННАЯ ЗАГЛУШКА — чтобы сборка прошла!
+    // Потом заменим реальной логикой.
+    await _bot.SendMessage(msg.Chat.Id,
+        user.Language == "kz" 
+            ? "Қате команда. Сабақты таңдаңыз." 
+            : "Неизвестная команда. Выберите урок.",
+        cancellationToken: ct);
 }
+
+}
+
