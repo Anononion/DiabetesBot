@@ -18,4 +18,7 @@ public class UserData
 
     // история хлебных единиц
     public List<XeRecord> XeHistory { get; set; } = new();
+
+    public string? TempMeasurementType { get; set; }
 }
+
