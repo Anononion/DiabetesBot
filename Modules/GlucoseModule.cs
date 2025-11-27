@@ -1,3 +1,4 @@
+using System.IO;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -320,3 +321,4 @@ public class GlucoseModule
             : "Показатель в норме.";
     }
 }
+
