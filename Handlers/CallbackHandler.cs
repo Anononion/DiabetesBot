@@ -1,7 +1,6 @@
 using DiabetesBot.Models;
-using DiabetesBot.Modules;
-using DiabetesBot.Services;
 using DiabetesBot.Utils;
+using DiabetesBot.Modules;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -11,79 +10,110 @@ public class CallbackHandler
 {
     private readonly ITelegramBotClient _bot;
     private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _bread;
+    private readonly BreadUnitsModule _breadUnits;
     private readonly DiabetesSchoolModule _school;
 
     public CallbackHandler(
         ITelegramBotClient bot,
         GlucoseModule glucose,
-        BreadUnitsModule bread,
+        BreadUnitsModule breadUnits,
         DiabetesSchoolModule school)
     {
         _bot = bot;
         _glucose = glucose;
-        _bread = bread;
+        _breadUnits = breadUnits;
         _school = school;
     }
 
-    public async Task HandleCallbackAsync(CallbackQuery q, CancellationToken ct)
+    public async Task HandleAsync(CallbackQuery q, CancellationToken ct)
     {
         long userId = q.From.Id;
+        long chatId = q.Message!.Chat.Id;
+        string data = q.Data ?? "";
+
         var user = StateStore.Get(userId);
 
-        string data = q.Data ?? "";
-        BotLogger.Info($"[CALLBACK] From={userId} Data='{data}' Phase={user.Phase}");
+        BotLogger.Info($"[CB] DATA: '{data}' from {userId}");
 
-        try
+        // ============================================================
+        // ГЛЮКОЗА: выбор типа измерения
+        // ============================================================
+        if (data.StartsWith("GLU_TYPE|"))
         {
-            switch (user.Phase)
-            {
-                // ============================
-                // ГЛЮКОЗА
-                // ============================
-                case BotPhase.Glucose:
-                case BotPhase.Glucose_TypeChoice:
-                case BotPhase.Glucose_ValueInput:
-                    if (data.StartsWith("GLU_"))
-                    {
-                        await _glucose.HandleCallbackAsync(user, q, ct);
-                        return;
-                    }
-                    break;
+            string type = data.Split('|')[1];
+            user.TempMeasurementType = type;
+            user.Phase = BotPhase.Glucose_ValueInput;
 
-                // ============================
-                // ХЕ
-                // ============================
-                case BotPhase.BreadUnits:
-                case BotPhase.BreadUnits_EnterGrams:
-                    if (data.StartsWith("BU_"))
-                    {
-                        await _bread.HandleCallbackAsync(user, q, ct);
-                        return;
-                    }
-                    break;
+            await _glucose.AskValueAsync(user, chatId, ct);
 
-                // ============================
-                // ШКОЛА ДИАБЕТА
-                // ============================
-                case BotPhase.DiabetesSchool:
-                    if (data.StartsWith("DS_"))
-                    {
-                        await _school.HandleCallbackAsync(user, q, ct);
-                        return;
-                    }
-                    break;
-
-                default:
-                    BotLogger.Warn($"[CALLBACK] Unexpected phase → ignoring. Phase={user.Phase}");
-                    break;
-            }
-
-            BotLogger.Warn($"[CALLBACK] Unknown callback data '{data}'");
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
         }
-        catch (Exception ex)
+
+        if (data == "GLU_SKIP")
         {
-            BotLogger.Error("[CALLBACK] Error processing callback", ex);
+            user.Phase = BotPhase.Glucose;
+
+            await _bot.SendMessage(chatId,
+                user.Language == "kz" ? "Өткізілді." : "Пропущено.",
+                cancellationToken: ct);
+
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
         }
+
+        // ============================================================
+        // ХЕ: выбор продукта
+        // ============================================================
+        if (data.StartsWith("XE_CAT|"))
+        {
+            string cat = data.Split('|')[1];
+
+            await _breadUnits.ShowItemsByCategoryAsync(user, chatId, cat, ct);
+
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
+        }
+
+        if (data.StartsWith("XE_ITEM|"))
+        {
+            string itemId = data.Split('|')[1];
+
+            await _breadUnits.SelectItemAsync(user, chatId, itemId, ct);
+
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
+        }
+
+        // ============================================================
+        // ШКОЛА ДИАБЕТА: уроки, страницы
+        // ============================================================
+        if (data.StartsWith("SCH_LESSON|"))
+        {
+            string lessonId = data.Split('|')[1];
+
+            await _school.OpenLessonAsync(user, chatId, lessonId, ct);
+
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
+        }
+
+        if (data.StartsWith("SCH_PAGE|"))
+        {
+            string[] parts = data.Split('|');
+            string lessonId = parts[1];
+            int page = int.Parse(parts[2]);
+
+            await _school.ShowLessonPageAsync(user, chatId, lessonId, page, ct);
+
+            await _bot.AnswerCallbackQuery(q.Id);
+            return;
+        }
+
+        // ============================================================
+        // НЕИЗВЕСТНЫЙ CALLBACK
+        // ============================================================
+        BotLogger.Warn($"[CB] UNKNOWN → '{data}'");
+        await _bot.AnswerCallbackQuery(q.Id, "Unknown action");
     }
 }
