@@ -42,6 +42,20 @@ public class CommandHandler
 
         BotLogger.Info($"[CMD] User state: lang={user.Language}, phase={user.Phase}");
 
+        // ============================================================
+        // ГЛОБАЛЬНАЯ КНОПКА НАЗАД
+        // ============================================================
+        string globalBack = user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад";
+
+        if (text == globalBack)
+        {
+            BotLogger.Info($"[CMD] GLOBAL BACK from phase={user.Phase}");
+
+            user.Phase = BotPhase.MainMenu;
+            await SendMainMenuAsync(user, chatId, ct);
+            return;
+        }
+
         // Route by phase
         switch (user.Phase)
         {
@@ -220,3 +234,4 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
