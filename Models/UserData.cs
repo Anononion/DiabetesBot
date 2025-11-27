@@ -25,7 +25,11 @@ public class UserData
 
     public int CurrentLesson { get; set; } = 0;
     public int LessonPage { get; set; } = 0;
+
+    // ======================================================
+    // ▶ ДОБАВЬ ЭТИ ТРИ ПОЛЯ ← ЭТО ГЛАВНАЯ ПРОБЛЕМА
+    // ======================================================
+    public GlucoseData? Glucose { get; set; }       // используется GlucoseModule
+    public string? TempLessonId { get; set; }       // используется DiabetesSchoolModule
+    public string? TempSubId { get; set; }          // используется DiabetesSchoolModule
 }
-
-
-
