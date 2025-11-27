@@ -48,15 +48,17 @@ public class BotService
         {
             BotLogger.Info($"[BOT] Update received: type={update.Type}");
 
-            if (update.Type == UpdateType.Message && update.Message != null)
+            // ===== CALLBACKS должны обрабатываться ПО НАЛИЧИЮ, а не по типу =====
+            if (update.CallbackQuery != null)
             {
-                await _cmd.HandleMessageAsync(update.Message, CancellationToken.None);
+                await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
                 return;
             }
 
-            if (update.Type == UpdateType.CallbackQuery && update.CallbackQuery != null)
+            // ===== Сообщения =====
+            if (update.Message != null)
             {
-                await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
+                await _cmd.HandleMessageAsync(update.Message, CancellationToken.None);
                 return;
             }
 
@@ -67,6 +69,7 @@ public class BotService
             BotLogger.Error("[BOT] ERROR during update handling", ex);
         }
     }
+
 
     // ============================================================
     // WEBHOOK MANAGEMENT
@@ -82,4 +85,5 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
