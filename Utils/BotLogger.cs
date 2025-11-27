@@ -39,4 +39,116 @@ public static class BotLogger
 
     public static void Trace(string msg, object? data = null) => Write(Level.TRACE, msg, data);
     public static void Debug(string msg, object? data = null) => Write(Level.DEBUG, msg, data);
-    public static void Info(string msg, object? data = null) => Wri
+    public static void Info(string msg, object? data = null) => Write(Level.INFO, msg, data);
+    public static void Warn(string msg, object? data = null) => Write(Level.WARN, msg, data);
+    public static void Error(string msg, Exception? ex = null, object? data = null) =>
+        Write(Level.ERROR, msg, Merge(data, new { exception = ex?.ToString() }));
+    public static void Fatal(string msg, Exception? ex = null, object? data = null) =>
+        Write(Level.FATAL, msg, Merge(data, new { exception = ex?.ToString() }));
+
+    private static void Write(Level level, string message, object? data)
+    {
+        if (level < MinLevel) return;
+
+        var ctx = CurrentCtx.Value ?? LogContext.Empty;
+        var payload = new
+        {
+            ts = DateTimeOffset.UtcNow.ToString("O"),
+            level = level.ToString(),
+            msg = message,
+            op = ctx.Operation,
+            dur_ms = ctx.ElapsedMs(),
+            userId = ctx.UserId,
+            chatId = ctx.ChatId,
+            corr = ctx.CorrelationId,
+            data
+        };
+
+        var line = JsonSerializer.Serialize(payload, JsonOpts);
+
+        if (ToConsole)
+            Console.WriteLine(line);
+
+        if (ToFile)
+            WriteQueue.Add(line);
+    }
+
+    private static void WriterLoop()
+    {
+        string currentPath = GetLogPath();
+        using var file = new StreamWriter(new FileStream(currentPath, FileMode.Append, FileAccess.Write, FileShare.Read))
+        { AutoFlush = true };
+
+        foreach (var line in WriteQueue.GetConsumingEnumerable())
+        {
+            lock (FileLock)
+            {
+                var target = GetLogPath();
+                if (!string.Equals(target, currentPath, StringComparison.OrdinalIgnoreCase) ||
+                    new FileInfo(currentPath).Length > MaxFileBytes)
+                {
+                    file.Flush();
+                    try { (file.BaseStream as FileStream)?.Dispose(); } catch { }
+                    currentPath = target;
+                }
+            }
+        }
+    }
+
+    private static string GetLogPath()
+    {
+        var fname = $"bot_{DateTime.UtcNow:yyyy-MM-dd}.log";
+        return Path.Combine(LogDir, fname);
+    }
+
+    private static object? Merge(object? a, object? b)
+    {
+        if (a is null) return b;
+        if (b is null) return a;
+        return new { a, b };
+    }
+
+    private sealed class LogContext
+    {
+        public static readonly LogContext Empty = new(null, null, null, null);
+
+        public string? Operation { get; }
+        public long? UserId { get; }
+        public long? ChatId { get; }
+        public string CorrelationId { get; }
+        private readonly Stopwatch _sw;
+
+        public LogContext(string? operation, long? userId, long? chatId, string? correlationId)
+        {
+            Operation = operation;
+            UserId = userId;
+            ChatId = chatId;
+            CorrelationId = string.IsNullOrEmpty(correlationId) ? Guid.NewGuid().ToString("N") : correlationId!;
+            _sw = Stopwatch.StartNew();
+        }
+
+        public long ElapsedMs() => (long)_sw.Elapsed.TotalMilliseconds;
+    }
+
+    private sealed class LogScope : IDisposable
+    {
+        private readonly LogContext? _prev;
+        public LogContext Context { get; }
+        private bool _disposed;
+
+        public LogScope(LogContext? prev, string operation, long? userId, long? chatId, string? correlationId)
+        {
+            _prev = prev;
+            Context = new LogContext(operation, userId, chatId, correlationId);
+            BotLogger.Write(Level.TRACE, $"→ {operation} start", null);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            BotLogger.Write(Level.TRACE, $"← {Context.Operation} end", new { elapsed_ms = Context.ElapsedMs() });
+            CurrentCtx.Value = _prev;
+        }
+    }
+}
