@@ -1,119 +1,77 @@
+using DiabetesBot.Models;
+using DiabetesBot.Modules;
+using DiabetesBot.Services;
+using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using DiabetesBot.Services;
-using DiabetesBot.Modules;
-using DiabetesBot.Models;
-using DiabetesBot.Utils;
 
 namespace DiabetesBot.Handlers;
 
 public class CallbackHandler
 {
-    private readonly TelegramBotClient _bot;
-    private readonly UserStateService _state;
-    private readonly JsonStorageService _storage;
-
+    private readonly ITelegramBotClient _bot;
     private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _bu;
+    private readonly BreadUnitsModule _bread;
     private readonly DiabetesSchoolModule _school;
 
-    private CommandHandler? _commandHandler;
-
     public CallbackHandler(
-        TelegramBotClient bot,
-        UserStateService state,
-        JsonStorageService storage,
+        ITelegramBotClient bot,
         GlucoseModule glucose,
-        BreadUnitsModule bu,
+        BreadUnitsModule bread,
         DiabetesSchoolModule school)
     {
         _bot = bot;
-        _state = state;
-        _storage = storage;
         _glucose = glucose;
-        _bu = bu;
+        _bread = bread;
         _school = school;
-
-        BotLogger.Info("[CB] CallbackHandler создан");
     }
 
-    public void SetCommandHandler(CommandHandler handler)
+    // ============================================================
+    // MAIN ENTRY
+    // ============================================================
+
+    public async Task HandleCallbackAsync(CallbackQuery q, CancellationToken ct)
     {
-        _commandHandler = handler;
-        BotLogger.Info("[CB] CommandHandler привязан");
-    }
+        long userId = q.From.Id;
+        var user = StateStore.Get(userId);
 
-    // ---------------------------------------------------------
-    // ГЛАВНАЯ ТОЧКА ВХОДА
-    // ---------------------------------------------------------
-    public async Task HandleAsync(CallbackQuery query, CancellationToken ct)
-    {
-        if (query.Data is null)
+        string data = q.Data ?? "";
+        BotLogger.Info($"[CALLBACK] From={userId} Data='{data}' Phase={user.Phase}");
+
+        try
         {
-            BotLogger.Warn("[CB] query.Data == null → игнор");
-            return;
+            // ============================
+            // ГЛЮКОЗА
+            // ============================
+            if (data.StartsWith("GLU_"))
+            {
+                await _glucose.HandleCallbackAsync(user, q, ct);
+                return;
+            }
+
+            // ============================
+            // ХЛЕБНЫЕ ЕДИНИЦЫ
+            // ============================
+            if (data.StartsWith("BU_"))
+            {
+                await _bread.HandleCallbackAsync(user, q, ct);
+                return;
+            }
+
+            // ============================
+            // ШКОЛА ДИАБЕТА
+            // ============================
+            if (data.StartsWith("DS_"))
+            {
+                await _school.HandleCallbackAsync(user, q, ct);
+                return;
+            }
+
+            BotLogger.Warn($"[CALLBACK] Unknown callback prefix: '{data}'");
         }
-
-        string data = query.Data;
-        long chatId = query.Message!.Chat.Id;
-        long userId = query.From.Id;
-
-        BotLogger.Info($"[CB] Callback: userId={userId}, data='{data}'");
-
-        var user = await _storage.LoadAsync(userId);
-        string lang = user.Language ?? "ru";
-
-        // ---------------------------------------------------------
-        // 1) Смена языка
-        // ---------------------------------------------------------
-        if (data == "lang_ru" || data == "lang_kk")
+        catch (Exception ex)
         {
-            user.Language = data == "lang_ru" ? "ru" : "kk";
-            await _storage.SaveAsync(user);
-            await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
-
-            string msg = user.Language == "ru"
-                ? "Язык изменён 🇷🇺"
-                : "Тіл өзгертілді 🇰🇿";
-
-            await _bot.SendMessage(chatId, msg, cancellationToken: ct);
-
-            if (_commandHandler != null)
-                await _commandHandler.SendMainMenuAsync(chatId, user.Language, ct);
-
-            return;
+            BotLogger.Error("[CALLBACK] Error processing callback", ex);
         }
-
-        // ---------------------------------------------------------
-        // 2) Глюкометрия
-        // ---------------------------------------------------------
-        if (data.StartsWith("measure_"))
-        {
-            await _glucose.HandleCallbackAsync(query, ct);
-            return;
-        }
-
-        // ---------------------------------------------------------
-        // 3) Хлебные единицы (BU)
-        // ---------------------------------------------------------
-        if (data.StartsWith("BU_"))
-        {
-            await _bu.HandleButton(chatId, data, ct);
-            return;
-        }
-
-        // ---------------------------------------------------------
-        // 4) Школа диабета (DS)
-        // ---------------------------------------------------------
-        if (data.StartsWith("DS_"))
-        {
-            await _school.HandleCallbackAsync(query, ct);
-            return;
-        }
-
-        // ---------------------------------------------------------
-        // Fallback
-        // ---------------------------------------------------------
-        BotLogger.Warn($"[CB] Неизвестный callback: {data}");
     }
 }
