@@ -1,17 +1,21 @@
-﻿namespace DiabetesBot.Models;
+namespace DiabetesBot.Models;
 
 public class UserData
 {
     public long UserId { get; set; }
+
+    // язык пользователя
     public string Language { get; set; } = "ru";
 
-    public UserPhase Phase { get; set; } = UserPhase.New;
+    // текущее состояние (фаза)
+    public BotPhase Phase { get; set; } = BotPhase.MainMenu;
 
-    public UserState State { get; set; } = new();
-
+    // список измерений
     public List<Measurement> Measurements { get; set; } = new();
 
+    // дневник еды
     public List<FoodEntry> FoodDiary { get; set; } = new();
 
+    // история ХЕ
     public List<XeRecord> XeHistory { get; set; } = new();
 }
