@@ -25,7 +25,7 @@ public class CallbackHandler
         _school = school;
     }
 
-    public async Task HandleAsync(CallbackQuery q, CancellationToken ct)
+    public async Task HandleCallbackAsync(CallbackQuery q, CancellationToken ct)
     {
         long userId = q.From.Id;
         long chatId = q.Message!.Chat.Id;
@@ -117,3 +117,4 @@ public class CallbackHandler
         await _bot.AnswerCallbackQuery(q.Id, "Unknown action");
     }
 }
+
