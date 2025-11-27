@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot.Types;
 using System.Text.Json;
-using DiabetesBot.Utils; // важно!
+using DiabetesBot.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +13,6 @@ builder.Services.AddSingleton<BotService>(sp =>
     var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
     if (string.IsNullOrEmpty(token))
         throw new Exception("BOT_TOKEN missing");
-
     return new BotService(token);
 });
 
@@ -24,6 +23,16 @@ var jsonOptions = new JsonSerializerOptions
 
 var app = builder.Build();
 
+//
+// === ВАЖНО: настроить PORT ===
+//
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+app.Urls.Clear();
+app.Urls.Add($"http://0.0.0.0:{port}");
+
+//
+// === Webhook endpoint ===
+//
 app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService bot) =>
 {
     if (token != Environment.GetEnvironmentVariable("BOT_TOKEN"))
@@ -32,7 +41,6 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
     try
     {
         var update = await JsonSerializer.DeserializeAsync<Update>(ctx.Request.Body, jsonOptions);
-
         if (update == null)
         {
             BotLogger.Error("[WEBHOOK] Update == null");
@@ -44,21 +52,11 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
     catch (Exception ex)
     {
         BotLogger.Error("[WEBHOOK] Exception", ex);
-        return Results.Ok(); // не отдаём Telegram 500
     }
 
     return Results.Ok();
 });
 
-async Task RegisterWebhook()
-{
-    var token = Environment.GetEnvironmentVariable("BOT_TOKEN");
-    var bot = app.Services.GetRequiredService<BotService>();
-    string url = $"https://diacare-2x9i.onrender.com/webhook/{token}";
-    await bot.SetWebhookAsync(url);
-    BotLogger.Info($"Webhook set: {url}");
-}
-
-_ = RegisterWebhook();
+BotLogger.Info($"Bot started on port {port}");
 
 app.Run();
