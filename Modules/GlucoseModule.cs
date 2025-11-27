@@ -1,10 +1,10 @@
 using System.Globalization;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Models;
 using DiabetesBot.Utils;
+using System.IO;
 
 namespace DiabetesBot.Modules;
 
@@ -220,7 +220,8 @@ public class GlucoseModule
             chatId,
             new InputFileStream(new MemoryStream(bytes), "glucose.png"),
             caption: user.Language == "kz" ? "График:" : "График:",
-            cancellationToken: ct);
+            cancellationToken: ct
+        );
     }
 
     // ============================================================
@@ -249,3 +250,4 @@ public class GlucoseModule
         return lang == "kz" ? "Қалыпты." : "Норма.";
     }
 }
+
