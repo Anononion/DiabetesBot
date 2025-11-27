@@ -1,6 +1,6 @@
 using DiabetesBot.Services;
-using DiabetesBot.Utils;
 using DiabetesBot.Modules;
+using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -9,80 +9,67 @@ namespace DiabetesBot.Handlers;
 public class CallbackHandler
 {
     private readonly ITelegramBotClient _bot;
-    private readonly CommandHandler _commands;
+    private readonly CommandHandler _cmd;
+    private readonly GlucoseModule _glucose;
+    private readonly BreadUnitsModule _xe;
+    private readonly DiabetesSchoolModule _school;
 
-    public CallbackHandler(ITelegramBotClient bot, CommandHandler commands)
+    public CallbackHandler(
+        ITelegramBotClient bot,
+        CommandHandler cmd,
+        GlucoseModule glucose,
+        BreadUnitsModule xe,
+        DiabetesSchoolModule school)
     {
         _bot = bot;
-        _commands = commands;
+        _cmd = cmd;
+        _glucose = glucose;
+        _xe = xe;
+        _school = school;
     }
 
     public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
     {
-        long userId = cb.From.Id;
         long chatId = cb.Message!.Chat.Id;
+        long uid = cb.From.Id;
         string data = cb.Data ?? "";
 
-        BotLogger.Info($"[CB] DATA = {data}");
+        BotLogger.Info($"[CB] {data}");
 
-        // =========================
-        // ХЕ — Категории старого бота
-        // =========================
-        if (data.StartsWith("xe_cat:"))
-        {
-            string categoryName = data.Substring("xe_cat:".Length);
-            await RedirectTextAsync(chatId, userId, categoryName, ct);
-            return;
-        }
-
-        // =========================
-        // ХЕ — продукт (старый бот → просто текст)
-        // =========================
-        if (data.StartsWith("xe_item:"))
-        {
-            string foodName = data.Substring("xe_item:".Length);
-            await RedirectTextAsync(chatId, userId, foodName, ct);
-            return;
-        }
-
-        // =========================
-        // Школа диабета — Урок N
-        // =========================
+        // Диабет-школа: Урок
         if (data.StartsWith("school_lesson:"))
         {
-            string lessonTitle = data.Substring("school_lesson:".Length);
-            await RedirectTextAsync(chatId, userId, lessonTitle, ct);
+            string id = data.Split(':')[1];      // "1"
+            await _cmd.HandleMessageAsync(Fake(chatId, uid, $"Урок {id}"), ct);
             return;
         }
 
-        // =========================
-        // Школа диабета — навигация (старый бот принимает "Далее"/"Назад")
-        // =========================
+        // Диабет-школа: Подурок
+        if (data.StartsWith("school_sub:"))
+        {
+            string raw = data.Split(':')[1];    // "1.2"
+            await _cmd.HandleMessageAsync(Fake(chatId, uid, raw), ct);
+            return;
+        }
+
         if (data == "school_next")
         {
-            await RedirectTextAsync(chatId, userId, "Далее", ct);
+            await _cmd.HandleMessageAsync(Fake(chatId, uid, "Далее"), ct);
             return;
         }
 
         if (data == "school_prev")
         {
-            await RedirectTextAsync(chatId, userId, "Назад", ct);
+            await _cmd.HandleMessageAsync(Fake(chatId, uid, "Назад"), ct);
             return;
         }
-
-        BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
 
-    private async Task RedirectTextAsync(long chatId, long userId, string text, CancellationToken ct)
-    {
-        await _commands.HandleMessageAsync(
-            new Message
-            {
-                Chat = new Chat { Id = chatId },
-                From = new User { Id = userId },
-                Text = text
-            },
-            ct
-        );
-    }
+    private static Message Fake(long chatId, long uid, string text)
+        => new Message
+        {
+            Chat = new Chat { Id = chatId },
+            From = new User { Id = uid },
+            Text = text
+        };
 }
