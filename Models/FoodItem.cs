@@ -1,28 +1,24 @@
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace DiabetesBot.Models;
 
 public class FoodItem
 {
-    [JsonPropertyName("id")]
-    public string Id { get; set; } = "";
+    [JsonProperty("id")]
+    public string Id { get; set; }
 
-    [JsonPropertyName("category")]
-    public string Category { get; set; } = "";
+    [JsonProperty("category")]
+    public string Category { get; set; }
 
-    [JsonPropertyName("name_ru")]
-    public string Name_Ru { get; set; } = "";
+    [JsonProperty("name_ru")]
+    public string NameRu { get; set; }
 
-    [JsonPropertyName("name_kk")]
-    public string Name_Kk { get; set; } = "";
+    [JsonProperty("name_kk")]
+    public string NameKk { get; set; }
 
-    [JsonPropertyName("gramsPerXE")]
-    public double GramsPerXE { get; set; }
+    [JsonProperty("carbsPer100")]
+    public int CarbsPer100 { get; set; }
 
-    [JsonPropertyName("carbsPer100")]
-    public double CarbsPer100 { get; set; }
-
-    // 🔥 ДОБАВЛЯЕМ ОБЩЕЕ ИМЯ ДЛЯ СТАРОГО КОДА
-    [JsonIgnore]
-    public string Name => Name_Ru; // чтобы старый код не падал
+    [JsonProperty("gramsPerXE")]
+    public int GramsPerXE { get; set; }
 }
