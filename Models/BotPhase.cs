@@ -29,4 +29,15 @@ public enum BotPhase
     DiabetesSchool,                   // Главное меню школы диабета
     DiabetesSchool_SelectLesson,      // Выбор урока
     DiabetesSchool_SelectPage         // Выбор страницы внутри урока
+
+    None = 0,
+
+    // === Glucose ===
+    Glucose_ValueInput = 10,
+
+    // === Xe ===
+    BreadUnits_EnterGrams = 20,
+
+    // === School ===
+    School_LessonNavigation = 30
 }
