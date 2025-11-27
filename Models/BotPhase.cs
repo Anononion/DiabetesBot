@@ -1,33 +1,24 @@
-public enum BotPhase
+namespace DiabetesBot.Models
 {
-    None = 0,
+    public enum BotPhase
+    {
+        // Базовое состояние
+        None = 0,
 
-    // ===============================
-    // ОСНОВНОЕ
-    // ===============================
-    MainMenu,
-    Settings,
-    LanguageChoice,
+        // Главное меню и настройки
+        MainMenu        = 1,
+        Settings        = 2,
+        LanguageChoice  = 3,
 
-    // ===============================
-    // ГЛЮКОЗА
-    // ===============================
-    Glucose,                // Главное меню модуля Глюкозы
-    Glucose_SelectType,     // Ждём выбора: натощак / после еды / по времени
-    Glucose_InputValue,     // Ждём ввода числа
+        // Блок глюкозы
+        Glucose             = 10,
+        Glucose_ValueInput  = 11,
 
-    // ===============================
-    // ХЛЕБНЫЕ ЕДИНИЦЫ
-    // ===============================
-    BreadUnits,
-    BreadUnits_SelectCategory,
-    BreadUnits_SelectItem,
-    BreadUnits_InputGrams,  // Ждём граммы
+        // Хлебные единицы
+        BreadUnits              = 20,
+        BreadUnits_EnterGrams   = 21,
 
-    // ===============================
-    // ШКОЛА ДИАБЕТА
-    // ===============================
-    DiabetesSchool,
-    DiabetesSchool_SelectLesson,
-    DiabetesSchool_SelectPage
+        // Школа диабета
+        DiabetesSchool      = 30
+    }
 }
