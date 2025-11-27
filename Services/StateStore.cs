@@ -1,3 +1,5 @@
+using DiabetesBot.Models;
+
 public static class StateStore
 {
     private static readonly Dictionary<long, UserData> _users = new();
