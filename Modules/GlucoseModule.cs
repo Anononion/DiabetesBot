@@ -1,10 +1,11 @@
+// GlucoseModule.cs — исправленная версия
+
 using System.Globalization;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Models;
 using DiabetesBot.Utils;
-using System.IO;
 
 namespace DiabetesBot.Modules;
 
@@ -17,9 +18,7 @@ public class GlucoseModule
         _bot = bot;
     }
 
-    // ============================================================
     // MAIN MENU
-    // ============================================================
     public async Task ShowMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
         string add = user.Language == "kz" ? "➕ Өлшеу қосу" : "➕ Добавить измерение";
@@ -37,13 +36,9 @@ public class GlucoseModule
 
         string msg = user.Language == "kz" ? "Әрекетті таңдаңыз:" : "Выберите действие:";
         await _bot.SendMessage(chatId, msg, replyMarkup: kb, cancellationToken: ct);
-
-        BotLogger.Info("[GLU] ShowMenu");
     }
 
-    // ============================================================
-    // HANDLE TEXT
-    // ============================================================
+    // TEXT HANDLER
     public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
         string add = user.Language == "kz" ? "➕ Өлшеу қосу" : "➕ Добавить измерение";
@@ -78,10 +73,8 @@ public class GlucoseModule
         await ShowMenuAsync(user, chatId, ct);
     }
 
-    // ============================================================
-    // STEP 1 — SELECT TYPE
-    // ============================================================
-    private async Task AskMeasurementTypeAsync(UserData user, long chatId, CancellationToken ct)
+    // STEP 1 — select type
+    public async Task AskMeasurementTypeAsync(UserData user, long chatId, CancellationToken ct)
     {
         string fasting = user.Language == "kz" ? "🕗 Ашқарын" : "🕗 Натощак";
         string after = user.Language == "kz" ? "🍽 Тамақтан кейін" : "🍽 После еды";
@@ -98,13 +91,9 @@ public class GlucoseModule
 
         string msg = user.Language == "kz" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:";
         await _bot.SendMessage(chatId, msg, replyMarkup: kb, cancellationToken: ct);
-
-        BotLogger.Info("[GLU] ask type");
     }
 
-    // ============================================================
-    // CALLBACK
-    // ============================================================
+    // CALLBACK (GLucose)
     public async Task HandleCallbackAsync(UserData user, CallbackQuery q, CancellationToken ct)
     {
         string data = q.Data!;
@@ -121,14 +110,14 @@ public class GlucoseModule
         if (data == "GLU_SKIP")
         {
             user.Phase = BotPhase.Glucose;
-            await _bot.SendMessage(chatId, user.Language == "kz" ? "Өткізілді." : "Пропущено.", cancellationToken: ct);
+            await _bot.SendMessage(chatId,
+                user.Language == "kz" ? "Өткізілді." : "Пропущено.",
+                cancellationToken: ct);
             return;
         }
     }
 
-    // ============================================================
-    // STEP 2 — ENTER VALUE
-    // ============================================================
+    // STEP 2 — enter value
     public async Task AskValueAsync(UserData user, long chatId, CancellationToken ct)
     {
         user.Phase = BotPhase.Glucose_ValueInput;
@@ -138,8 +127,6 @@ public class GlucoseModule
             : "Введите уровень глюкозы (например: 5.8):";
 
         await _bot.SendMessage(chatId, msg, cancellationToken: ct);
-
-        BotLogger.Info("[GLU] ask value");
     }
 
     public async Task HandleValueInputAsync(UserData user, long chatId, string text, CancellationToken ct)
@@ -172,10 +159,8 @@ public class GlucoseModule
         await ShowMenuAsync(user, chatId, ct);
     }
 
-    // ============================================================
     // HISTORY
-    // ============================================================
-    private async Task ShowHistoryAsync(UserData user, long chatId, CancellationToken ct)
+    public async Task ShowHistoryAsync(UserData user, long chatId, CancellationToken ct)
     {
         if (user.Measurements.Count == 0)
         {
@@ -194,10 +179,8 @@ public class GlucoseModule
         await _bot.SendMessage(chatId, msg, cancellationToken: ct);
     }
 
-    // ============================================================
-    // STATS + GRAPH
-    // ============================================================
-    private async Task ShowStatsAsync(UserData user, long chatId, CancellationToken ct)
+    // STATS
+    public async Task ShowStatsAsync(UserData user, long chatId, CancellationToken ct)
     {
         var last7 = user.Measurements.Where(x => (DateTime.Now - x.Time).TotalDays <= 7).ToList();
 
@@ -226,9 +209,7 @@ public class GlucoseModule
         );
     }
 
-    // ============================================================
     // INTERPRETATION
-    // ============================================================
     private string InterpretGlucose(double v, string type, string lang)
     {
         if (v < 3.9) return lang == "kz" ? "🟡 Төмен" : "🟡 Низкое";
@@ -252,6 +233,3 @@ public class GlucoseModule
         return lang == "kz" ? "Қалыпты." : "Норма.";
     }
 }
-
-
-
