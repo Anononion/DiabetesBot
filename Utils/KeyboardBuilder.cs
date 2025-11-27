@@ -1,158 +1,77 @@
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot.Types;
 
-namespace DiabetesBot.Utils;
+namespace DiabetesBot.Services;
 
 public static class KeyboardBuilder
 {
-    // =====================================================
-    //  ВОССТАНОВЛЕННЫЕ КНОПКИ (для совместимости)
-    // =====================================================
+    // ============================
+    // LABELS
+    // ============================
 
-    public static string Button_Glucose(string lang)
-        => lang == "kk" ? "📈 Қант өлшеу" : "📈 Глюкометрия";
+    public static string BtnGlucose(string lang) =>
+        lang == "kz" ? "Глюкоза📈" : "Глюкоза📈";
 
-    public static string Button_BreadUnits(string lang)
-        => lang == "kk" ? "🍞 НБ (нан бірлігі)" : "🍞 Хлебные единицы";
+    public static string BtnBreadUnits(string lang) =>
+        lang == "kz" ? "Нан бірліктері🍞" : "ХЕ🍞";
 
-    public static string Button_School(string lang)
-        => lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета";
+    public static string BtnSchool(string lang) =>
+        lang == "kz" ? "Қант диабеті мектебі📚" : "Школа диабета📚";
 
-    public static string Button_Settings(string lang)
-        => lang == "kk" ? "⚙️ Баптаулар" : "⚙️ Настройки";
+    public static string BtnSettings(string lang) =>
+        lang == "kz" ? "Баптаулар⚙️" : "Настройки⚙️";
 
-    public static string Button_Back(string lang)
-        => lang == "kk" ? "⬅️ Мәзірге" : "⬅️ В меню";
+    public static string BtnBack(string lang) =>
+        lang == "kz" ? "Артқа" : "Назад";
 
+    public static string BtnLanguage(string lang) =>
+        lang == "kz" ? "Тіл🌐" : "Язык🌐";
 
-    // =====================================================
-    //  ГЛАВНОЕ МЕНЮ (новая версия)
-    // =====================================================
+    public static string LangRu => "Русский 🇷🇺";
+    public static string LangKz => "Қазақша 🇰🇿";
 
-    public static ReplyKeyboardMarkup MainMenu()
-        => MainMenu("ru");
+    // ============================
+    // MAIN MENU
+    // ============================
 
-    public static ReplyKeyboardMarkup MainMenu(string lang)
+    public static IReplyMarkup MainMenu(string lang)
     {
-        lang = (lang ?? "ru").ToLowerInvariant();
-
-        if (lang == "kk")
-        {
-            return new ReplyKeyboardMarkup(new[]
-            {
-                new KeyboardButton[] { Button_Glucose(lang), Button_BreadUnits(lang) },
-                new KeyboardButton[] { Button_School(lang), Button_Settings(lang) }
-            })
-            {
-                ResizeKeyboard = true
-            };
-        }
-
         return new ReplyKeyboardMarkup(new[]
-        {
-            new KeyboardButton[] { Button_Glucose(lang), Button_BreadUnits(lang) },
-            new KeyboardButton[] { Button_School(lang), Button_Settings(lang) }
-        })
-        {
-            ResizeKeyboard = true
-        };
-    }
-
-
-    // =====================================================
-    //  КНОПКА "НАЗАД / В МЕНЮ"
-    // =====================================================
-
-    public static ReplyKeyboardMarkup BackToMenu()
-        => BackToMenu("ru");
-
-    public static ReplyKeyboardMarkup BackToMenu(string lang)
-    {
-        string caption = Button_Back(lang);
-
-        return new ReplyKeyboardMarkup(new[]
-        {
-            new KeyboardButton[] { caption }
-        })
-        {
-            ResizeKeyboard = true,
-            OneTimeKeyboard = true
-        };
-    }
-
-    public static ReplyKeyboardMarkup Back(string lang) => BackToMenu(lang);
-
-
-    // =====================================================
-    //  ВЕРТИКАЛЬНОЕ МЕНЮ (ReplyKeyboard)
-    // =====================================================
-
-    public static ReplyKeyboardMarkup Menu(string[] buttons, bool showBack = true)
-        => Menu(buttons, "ru", showBack);
-
-    public static ReplyKeyboardMarkup Menu(string[] buttons, string lang, bool showBack = true)
-    {
-        lang = (lang ?? "ru").ToLowerInvariant();
-
-        var rows = new List<List<KeyboardButton>>();
-
-        foreach (var btn in buttons)
-            rows.Add(new List<KeyboardButton> { new KeyboardButton(btn) });
-
-        if (showBack)
-            rows.Add(new List<KeyboardButton> { new KeyboardButton(lang == "kk" ? "⬅ Артқа" : "⬅ Назад") });
-
-        return new ReplyKeyboardMarkup(rows)
-        {
-            ResizeKeyboard = true
-        };
-    }
-
-
-    // =====================================================
-    //  INLINE-СПИСОК С КНОПКОЙ "НАЗАД"
-    // =====================================================
-
-    public static InlineKeyboardMarkup List(string[] items, bool showBack = true)
-        => List(items, "ru", showBack);
-
-    public static InlineKeyboardMarkup List(string[] items, string lang, bool showBack = true)
-    {
-        lang = (lang ?? "ru").ToLowerInvariant();
-
-        var rows = items.Select(i =>
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData(i, i)
-            }
-        ).ToList();
-
-        if (showBack)
-        {
-            string backText = lang == "kk" ? "⬅ Артқа" : "⬅ Назад";
-            rows.Add(new[] { InlineKeyboardButton.WithCallbackData(backText, "BACK") });
-        }
-
-        return new InlineKeyboardMarkup(rows);
-    }
-
-
-    // =====================================================
-    //  ВЫБОР ЯЗЫКА
-    // =====================================================
-
-    public static InlineKeyboardMarkup LanguageChoice()
-    {
-        return new InlineKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("🇷🇺 Русский", "lang_ru")
+                BtnGlucose(lang),
+                BtnBreadUnits(lang)
             },
             new[]
             {
-                InlineKeyboardButton.WithCallbackData("🇰🇿 Қазақ тілі", "lang_kk")
+                BtnSchool(lang),
+                BtnSettings(lang)
             }
-        });
+        })
+        {
+            ResizeKeyboard = true
+        };
+    }
+
+    // ============================
+    // SETTINGS MENU
+    // ============================
+
+    public static IReplyMarkup SettingsMenu(string lang)
+    {
+        return new ReplyKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                BtnLanguage(lang)
+            },
+            new[]
+            {
+                BtnBack(lang)
+            }
+        })
+        {
+            ResizeKeyboard = true
+        };
     }
 }
