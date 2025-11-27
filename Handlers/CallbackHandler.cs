@@ -63,6 +63,12 @@ public class CallbackHandler
         }
     }
 
+    public Task HandleCallbackAsync(CallbackQuery cb, CancellationToken ct)
+    {
+        return HandleAsync(cb, ct);
+    }
+
+
     private static Message Fake(long chatId, long uid, string text)
         => new Message
         {
@@ -71,4 +77,5 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
