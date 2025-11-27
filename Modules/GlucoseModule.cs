@@ -112,6 +112,7 @@ public class GlucoseModule
 
         if (data.StartsWith("GLU_TYPE|"))
         {
+            user.Phase = BotPhase.Glucose_ValueInput;
             user.TempMeasurementType = data.Split('|')[1];
             await AskValueAsync(user, chatId, ct);
             return;
@@ -119,6 +120,7 @@ public class GlucoseModule
 
         if (data == "GLU_SKIP")
         {
+            user.Phase = BotPhase.Glucose;
             await _bot.SendMessage(chatId, user.Language == "kz" ? "Өткізілді." : "Пропущено.", cancellationToken: ct);
             return;
         }
@@ -250,4 +252,5 @@ public class GlucoseModule
         return lang == "kz" ? "Қалыпты." : "Норма.";
     }
 }
+
 
