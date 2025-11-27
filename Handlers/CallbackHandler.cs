@@ -1,6 +1,6 @@
 using DiabetesBot.Services;
-using DiabetesBot.Modules;
 using DiabetesBot.Utils;
+using DiabetesBot.Modules;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -11,27 +11,12 @@ public class CallbackHandler
     private readonly ITelegramBotClient _bot;
     private readonly CommandHandler _commands;
 
-    private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _xe;
-    private readonly DiabetesSchoolModule _school;
-
-    public CallbackHandler(
-        ITelegramBotClient bot,
-        CommandHandler commands,
-        GlucoseModule glucose,
-        BreadUnitsModule xe,
-        DiabetesSchoolModule school)
+    public CallbackHandler(ITelegramBotClient bot, CommandHandler commands)
     {
         _bot = bot;
         _commands = commands;
-        _glucose = glucose;
-        _xe = xe;
-        _school = school;
     }
 
-    // ============================================================
-    // MAIN ENTRY
-    // ============================================================
     public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
     {
         long userId = cb.From.Id;
@@ -40,75 +25,64 @@ public class CallbackHandler
 
         BotLogger.Info($"[CB] DATA = {data}");
 
-        var user = StateStore.Get(userId);
-
-        // ------------------------------------------------------------
-        // ХЕ – Категория
-        // ------------------------------------------------------------
+        // =========================
+        // ХЕ — Категории старого бота
+        // =========================
         if (data.StartsWith("xe_cat:"))
         {
-            string category = data.Substring("xe_cat:".Length);
-            await _xe.ShowItemsByCategoryAsync(user, chatId, category, ct);
+            string categoryName = data.Substring("xe_cat:".Length);
+            await RedirectTextAsync(chatId, userId, categoryName, ct);
             return;
         }
 
-        // ------------------------------------------------------------
-        // ХЕ – Продукт
-        // ------------------------------------------------------------
+        // =========================
+        // ХЕ — продукт (старый бот → просто текст)
+        // =========================
         if (data.StartsWith("xe_item:"))
         {
-            string itemName = data.Substring("xe_item:".Length);
-            await _xe.SelectItemAsync(user, chatId, itemName, ct);
+            string foodName = data.Substring("xe_item:".Length);
+            await RedirectTextAsync(chatId, userId, foodName, ct);
             return;
         }
 
-        // ------------------------------------------------------------
-        // ШКОЛА ДИАБЕТА – Переходы
-        // ------------------------------------------------------------
+        // =========================
+        // Школа диабета — Урок N
+        // =========================
         if (data.StartsWith("school_lesson:"))
         {
-            // data: school_lesson:1
-            string lessonIdStr = data.Substring("school_lesson:".Length);
-
-            if (int.TryParse(lessonIdStr, out int lessonId))
-            {
-                user.CurrentLesson = lessonId;
-                user.LessonPage = 0;
-                await _school.ShowLessonPageAsync(user, chatId, ct);
-            }
+            string lessonTitle = data.Substring("school_lesson:".Length);
+            await RedirectTextAsync(chatId, userId, lessonTitle, ct);
             return;
         }
 
+        // =========================
+        // Школа диабета — навигация (старый бот принимает "Далее"/"Назад")
+        // =========================
         if (data == "school_next")
         {
-            user.LessonPage++;
-            await _school.ShowLessonPageAsync(user, chatId, ct);
+            await RedirectTextAsync(chatId, userId, "Далее", ct);
             return;
         }
 
         if (data == "school_prev")
         {
-            user.LessonPage--;
-            await _school.ShowLessonPageAsync(user, chatId, ct);
+            await RedirectTextAsync(chatId, userId, "Назад", ct);
             return;
         }
 
-        // ------------------------------------------------------------
-        // UNKNOWN
-        // ------------------------------------------------------------
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
 
-    // ============================================================
-    // UTILS
-    // ============================================================
-    private static Message FakeText(long chatId, long userId, string text)
+    private async Task RedirectTextAsync(long chatId, long userId, string text, CancellationToken ct)
     {
-        return new Message
-        {
-            Chat = new Chat { Id = chatId },
-            From = new User { Id = userId },
-            Text = text
-        };
+        await _commands.HandleMessageAsync(
+            new Message
+            {
+                Chat = new Chat { Id = chatId },
+                From = new User { Id = userId },
+                Text = text
+            },
+            ct
+        );
     }
 }
