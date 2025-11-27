@@ -1,10 +1,10 @@
 using System.Text.Json;
+using System.IO; // важно!
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using DiabetesBot.Utils;
 using DiabetesBot.Models;
-using DiabetesBot.Services;
 
 namespace DiabetesBot.Modules;
 
@@ -12,20 +12,18 @@ public class DiabetesSchoolModule
 {
     private readonly ITelegramBotClient _bot;
 
-    // RU/KZ уроки:
     private Dictionary<string, Dictionary<string, string>> _lessonsRu = new();
     private Dictionary<string, Dictionary<string, string>> _lessonsKk = new();
 
     public DiabetesSchoolModule(ITelegramBotClient bot)
     {
         _bot = bot;
-
-        BotLogger.Info("[DS] Инициализация модуля школы диабета");
+        BotLogger.Info("[DS] Инициализация школы диабета");
         LoadLessonTexts();
     }
 
     // ============================================================
-    // Загрузка JSON уроков
+    // Загрузка JSON
     // ============================================================
     private void LoadLessonTexts()
     {
@@ -37,46 +35,52 @@ public class DiabetesSchoolModule
             BotLogger.Info($"[DS] RU JSON → {ruPath}");
             BotLogger.Info($"[DS] KK JSON → {kkPath}");
 
-            if (File.Exists(ruPath))
+            // -------- RU --------
+            if (System.IO.File.Exists(ruPath))
             {
-                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(ruPath));
+                var jsonRaw = System.IO.File.ReadAllText(ruPath);
+                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonRaw);
+
                 if (json != null && json.ContainsKey("ds.lessons"))
                 {
-                    _lessonsRu =
-                        JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
-                            json["ds.lessons"].ToString()!
-                        )!;
+                    _lessonsRu = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
+                        json["ds.lessons"].ToString()!
+                    )!;
                 }
+
                 BotLogger.Info($"[DS] RU lessons loaded: {_lessonsRu.Count}");
             }
             else BotLogger.Warn("[DS] RU lessons NOT FOUND!");
 
-            if (File.Exists(kkPath))
+            // -------- KZ --------
+            if (System.IO.File.Exists(kkPath))
             {
-                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(File.ReadAllText(kkPath));
+                var jsonRaw = System.IO.File.ReadAllText(kkPath);
+                var json = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonRaw);
+
                 if (json != null && json.ContainsKey("ds.lessons"))
                 {
-                    _lessonsKk =
-                        JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
-                            json["ds.lessons"].ToString()!
-                        )!;
+                    _lessonsKk = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
+                        json["ds.lessons"].ToString()!
+                    )!;
                 }
-                BotLogger.Info($"[DS] KK lessons loaded: {_lessonsKk.Count}");
+
+                BotLogger.Info($"[DS] KZ lessons loaded: {_lessonsKk.Count}");
             }
-            else BotLogger.Warn("[DS] KK lessons NOT FOUND!");
+            else BotLogger.Warn("[DS] KZ lessons NOT FOUND!");
         }
         catch (Exception ex)
         {
-            BotLogger.Error("[DS] Ошибка загрузки JSON уроков", ex);
+            BotLogger.Error("[DS] Ошибка загрузки уроков", ex);
         }
     }
 
     // ============================================================
-    // Главное меню школы диабета
+    // Главное меню
     // ============================================================
     public async Task ShowMainMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
-        BotLogger.Info("[DS] ShowMainMenu");
+        BotLogger.Info("[DS] MainMenu");
 
         string t1 = user.Language == "kz" ? "📘 1-сабақ: Жалпы ақпарат" : "📘 Урок 1: Общая информация";
         string t2 = user.Language == "kz" ? "📗 2-сабақ: Асқынулар" : "📗 Урок 2: Осложнения";
@@ -87,48 +91,42 @@ public class DiabetesSchoolModule
 
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new[] { new KeyboardButton(t1), new KeyboardButton(t2) },
-            new[] { new KeyboardButton(t3), new KeyboardButton(t4) },
-            new[] { new KeyboardButton(back) }
+            new KeyboardButton[] { t1, t2 },
+            new KeyboardButton[] { t3, t4 },
+            new KeyboardButton[] { back }
         })
-        {
-            ResizeKeyboard = true
-        };
+        { ResizeKeyboard = true };
 
-        await _bot.SendMessage(chatId,
+        await _bot.SendMessage(
+            chatId,
             user.Language == "kz" ? "📚 Диабет мектебі" : "📚 Школа диабета",
             replyMarkup: kb,
             cancellationToken: ct);
     }
 
     // ============================================================
-    // Обработка TEКСТА (выбор главы)
+    // Обработка текста → выбор главы
     // ============================================================
     public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
-        BotLogger.Info($"[DS] HandleText: '{text}'");
-
         if (text.StartsWith("📘")) { await ShowChapterAsync(user, chatId, 1, ct); return; }
         if (text.StartsWith("📗")) { await ShowChapterAsync(user, chatId, 2, ct); return; }
         if (text.StartsWith("📙")) { await ShowChapterAsync(user, chatId, 3, ct); return; }
         if (text.StartsWith("📕")) { await ShowChapterAsync(user, chatId, 4, ct); return; }
 
-        BotLogger.Warn("[DS] Текст не распознан → главное меню");
         await ShowMainMenuAsync(user, chatId, ct);
     }
 
     // ============================================================
-    // Меню уроков главы (inline кнопки)
+    // Список уроков главы
     // ============================================================
     public async Task ShowChapterAsync(UserData user, long chatId, int chapter, CancellationToken ct)
     {
-        BotLogger.Info($"[DS] ShowChapter {chapter}");
-
         var src = user.Language == "kz" ? _lessonsKk : _lessonsRu;
 
         if (!src.ContainsKey(chapter.ToString()))
         {
-            await _bot.SendMessage(chatId, "Эта глава ещё не добавлена.", cancellationToken: ct);
+            await _bot.SendMessage(chatId, "Глава отсутствует.", cancellationToken: ct);
             return;
         }
 
@@ -139,21 +137,21 @@ public class DiabetesSchoolModule
             .Select(id => new[] { InlineKeyboardButton.WithCallbackData(id, $"DS_LESSON|{id}") })
             .ToList();
 
-        kb.Add(new[] { InlineKeyboardButton.WithCallbackData(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад", "DS_BACK") });
+        kb.Add(new[]
+        {
+            InlineKeyboardButton.WithCallbackData(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад", "DS_BACK")
+        });
 
-        await _bot.SendMessage(chatId,
-            user.Language == "kz" ? $"Глава {chapter}" : $"Глава {chapter}",
+        await _bot.SendMessage(chatId, $"Глава {chapter}",
             replyMarkup: new InlineKeyboardMarkup(kb),
             cancellationToken: ct);
     }
 
     // ============================================================
-    // Показ урока
+    // Конкретный урок
     // ============================================================
     public async Task ShowLessonAsync(UserData user, long chatId, string id, CancellationToken ct)
     {
-        BotLogger.Info($"[DS] ShowLesson {id}");
-
         var src = user.Language == "kz" ? _lessonsKk : _lessonsRu;
 
         string chapter = id.Split('.')[0];
@@ -181,12 +179,9 @@ public class DiabetesSchoolModule
         string data = q.Data!;
         long chatId = q.Message!.Chat.Id;
 
-        BotLogger.Info($"[DS] Callback: '{data}'");
-
         if (data.StartsWith("DS_LESSON|"))
         {
-            string id = data.Replace("DS_LESSON|", "");
-            await ShowLessonAsync(user, chatId, id, ct);
+            await ShowLessonAsync(user, chatId, data.Replace("DS_LESSON|", ""), ct);
             return;
         }
 
@@ -195,7 +190,5 @@ public class DiabetesSchoolModule
             await ShowMainMenuAsync(user, chatId, ct);
             return;
         }
-
-        BotLogger.Warn("[DS] Неизвестный callback");
     }
 }
