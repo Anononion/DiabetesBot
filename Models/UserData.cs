@@ -4,18 +4,18 @@ public class UserData
 {
     public long UserId { get; set; }
 
-    // язык пользователя
+    // текущий язык
     public string Language { get; set; } = "ru";
 
-    // текущее состояние (фаза)
+    // текущая фаза
     public BotPhase Phase { get; set; } = BotPhase.MainMenu;
 
-    // список измерений
+    // сохранённая история измерений
     public List<Measurement> Measurements { get; set; } = new();
 
     // дневник еды
     public List<FoodEntry> FoodDiary { get; set; } = new();
 
-    // история ХЕ
+    // история хлебных единиц
     public List<XeRecord> XeHistory { get; set; } = new();
 }
