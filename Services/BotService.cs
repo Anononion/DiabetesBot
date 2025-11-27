@@ -76,9 +76,10 @@ public class BotService
     {
         BotLogger.Info($"[BOT] Setting webhook to: {url}");
 
-        await _bot.DeleteWebhookAsync(dropPendingUpdates: true);
-        await _bot.SetWebhookAsync(url);
+        await _bot.DeleteWebhook(dropPendingUpdates: true);
+        await _bot.SetWebhook(url);
 
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
