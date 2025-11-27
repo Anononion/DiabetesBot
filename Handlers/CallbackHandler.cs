@@ -34,13 +34,13 @@ public class CallbackHandler
         _bu = bu;
         _school = school;
 
-        Logger.Info("[CB] CallbackHandler создан");
+        BotLogger.Info("[CB] CallbackHandler создан");
     }
 
     public void SetCommandHandler(CommandHandler handler)
     {
         _commandHandler = handler;
-        Logger.Info("[CB] CommandHandler привязан");
+        BotLogger.Info("[CB] CommandHandler привязан");
     }
 
     // ---------------------------------------------------------
@@ -50,7 +50,7 @@ public class CallbackHandler
     {
         if (query.Data is null)
         {
-            Logger.Warn("[CB] query.Data == null → игнор");
+            BotLogger.Warn("[CB] query.Data == null → игнор");
             return;
         }
 
@@ -58,7 +58,7 @@ public class CallbackHandler
         long chatId = query.Message!.Chat.Id;
         long userId = query.From.Id;
 
-        Logger.Info($"[CB] Callback: userId={userId}, data='{data}'");
+        BotLogger.Info($"[CB] Callback: userId={userId}, data='{data}'");
 
         var user = await _storage.LoadAsync(userId);
         string lang = user.Language ?? "ru";
@@ -114,6 +114,6 @@ public class CallbackHandler
         // ---------------------------------------------------------
         // Fallback
         // ---------------------------------------------------------
-        Logger.Warn($"[CB] Неизвестный callback: {data}");
+        BotLogger.Warn($"[CB] Неизвестный callback: {data}");
     }
 }
