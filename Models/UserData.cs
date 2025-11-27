@@ -32,4 +32,15 @@ public class UserData
     public GlucoseData? Glucose { get; set; }       // используется GlucoseModule
     public string? TempLessonId { get; set; }       // используется DiabetesSchoolModule
     public string? TempSubId { get; set; }          // используется DiabetesSchoolModule
+
+    // используется GlucoseModule — список записей глюкозы
+    public List<GlucoseEntry> Glucose { get; set; } = new();
+
+    // используется DiabetesSchoolModule — выбранный урок
+    public string? TempLessonId { get; set; }
+
+    // используется DiabetesSchoolModule — выбранная страница урока
+    public string? TempSubId { get; set; }
+
 }
+
