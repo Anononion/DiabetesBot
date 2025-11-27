@@ -41,28 +41,39 @@ public class CommandHandler
     public async Task HandleMessageAsync(Message msg, CancellationToken ct)
     {
         if (msg.Text is null)
+        {
+            BotLogger.Warn("[CMD] Message WITHOUT TEXT — ignore");
             return;
+        }
 
         long chatId = msg.Chat.Id;
         long userId = msg.From!.Id;
         string text = msg.Text;
 
+        BotLogger.Info($"[CMD] Incoming text: '{text}' (user={userId})");
+
         var user = await _storage.LoadAsync(userId);
         string lang = user.Language ?? "ru";
+        BotLogger.Info($"[CMD] User language = {lang}");
 
         var phase = await _state.GetPhaseAsync(userId);
+        BotLogger.Info($"[CMD] Current PHASE = {phase}");
 
         // -----------------------------------------------------------------
-        // WAITING FOR LANGUAGE — ignore text, wait for callback
+        // WAITING FOR LANGUAGE
         // -----------------------------------------------------------------
         if (phase == UserPhase.ChoosingLanguage)
+        {
+            BotLogger.Warn("[CMD] User is choosing language → ignoring TEXT (waiting for CALLBACK)");
             return;
+        }
 
         // -----------------------------------------------------------------
         // /start
         // -----------------------------------------------------------------
         if (text == "/start")
         {
+            BotLogger.Info("[CMD] /start detected");
             await StartAsync(chatId, userId, ct);
             return;
         }
@@ -70,9 +81,9 @@ public class CommandHandler
         // -----------------------------------------------------------------
         // MAIN MENU BUTTONS
         // -----------------------------------------------------------------
-
         if (text == (lang == "kk" ? "📈 Қандағы қант" : "📈 Глюкоза"))
         {
+            BotLogger.Info("[CMD] ENTER → Glucose menu");
             await _state.SetPhaseAsync(userId, UserPhase.GlucoseMenu);
             await _glucose.ShowMain(chatId, lang, ct);
             return;
@@ -80,6 +91,7 @@ public class CommandHandler
 
         if (text == (lang == "kk" ? "🥖 ХЕ есептеу" : "🥖 Хлебные единицы"))
         {
+            BotLogger.Info("[CMD] ENTER → Bread Units");
             await _state.SetPhaseAsync(userId, UserPhase.BreadUnits);
             await _bu.ShowMain(chatId, lang, ct);
             return;
@@ -87,9 +99,9 @@ public class CommandHandler
 
         if (text == (lang == "kk" ? "📚 Диабет мектебі" : "📚 Школа диабета"))
         {
+            BotLogger.Info("[CMD] ENTER → Diabetes School");
             await _state.SetPhaseAsync(userId, UserPhase.DiabetesSchool);
 
-            // В школе диабета reply-кнопки должны быть отключены
             await _bot.SendMessage(
                 chatId,
                 lang == "kk" ? "📚 Диабет мектебі:" : "📚 Школа диабета:",
@@ -103,22 +115,25 @@ public class CommandHandler
 
         if (text == (lang == "kk" ? "⚙️ Параметрлер" : "⚙️ Настройки"))
         {
+            BotLogger.Info("[CMD] ENTER → Settings");
             await ShowSettings(chatId, lang, ct);
             return;
         }
 
         // -----------------------------------------------------------------
-        // G L U C O S E    F L O W
+        // G L U C O S E
         // -----------------------------------------------------------------
         if (phase == UserPhase.GlucoseMenu)
         {
+            BotLogger.Info("[CMD] GlucoseMenu → HandleMessage()");
             await _glucose.HandleMessage(chatId, text, lang, ct);
             return;
         }
 
         if (phase == UserPhase.AwaitGlucoseValue)
         {
-            // Numeric input → ALWAYS remove reply keyboard
+            BotLogger.Info("[CMD] AwaitGlucoseValue → numeric input");
+
             await _bot.SendMessage(
                 chatId,
                 lang == "kk" ? "Мəлімет өңделуде..." : "Обрабатываю значение...",
@@ -135,6 +150,7 @@ public class CommandHandler
         // -----------------------------------------------------------------
         if (phase == UserPhase.BreadUnits)
         {
+            BotLogger.Info("[CMD] BreadUnits → HandleText()");
             await _bu.HandleText(chatId, text, lang, ct);
             return;
         }
@@ -144,9 +160,11 @@ public class CommandHandler
         // -----------------------------------------------------------------
         if (phase == UserPhase.DiabetesSchool)
         {
-            // All DS UI uses reply remove
+            BotLogger.Info("[CMD] DiabetesSchool → HandleText()");
+
             if (text == "⬅️ В меню" || text == "🔙 Артқа")
             {
+                BotLogger.Info("[CMD] DS → Back to main menu");
                 await SendMainMenuAsync(chatId, lang, ct);
                 return;
             }
@@ -156,20 +174,24 @@ public class CommandHandler
         }
 
         // -----------------------------------------------------------------
-        // DEFAULT → MAIN MENU
+        // DEFAULT
         // -----------------------------------------------------------------
+        BotLogger.Warn("[CMD] Text NOT recognized → show main menu");
         await SendMainMenuAsync(chatId, lang, ct);
     }
 
     // =====================================================================
-    // START
+    // /start
     // =====================================================================
     private async Task StartAsync(long chatId, long userId, CancellationToken ct)
     {
+        BotLogger.Info("[CMD] StartAsync()");
+
         var user = await _storage.LoadAsync(userId);
 
         if (string.IsNullOrWhiteSpace(user.Language))
         {
+            BotLogger.Info("[CMD] User HAS NO LANGUAGE → Asking language");
             await _state.SetPhaseAsync(userId, UserPhase.ChoosingLanguage);
 
             await _bot.SendMessage(
@@ -181,6 +203,7 @@ public class CommandHandler
             return;
         }
 
+        BotLogger.Info("[CMD] User already has language → Main Menu");
         await SendMainMenuAsync(chatId, user.Language, ct);
     }
 
@@ -189,6 +212,7 @@ public class CommandHandler
     // =====================================================================
     private async Task ShowSettings(long chatId, string lang, CancellationToken ct)
     {
+        BotLogger.Info("[CMD] ShowSettings()");
         await _bot.SendMessage(
             chatId,
             lang == "kk" ? "⚙️ Тілді таңдаңыз:" : "⚙️ Выберите язык:",
@@ -202,6 +226,8 @@ public class CommandHandler
     // =====================================================================
     public async Task SendMainMenuAsync(long chatId, string lang, CancellationToken ct)
     {
+        BotLogger.Info("[CMD] SendMainMenu()");
+
         await _state.SetPhaseAsync(chatId, UserPhase.MainMenu);
 
         await _bot.SendMessage(
