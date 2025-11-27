@@ -7,12 +7,18 @@ public class FoodItem
     [JsonPropertyName("id")]
     public string Id { get; set; } = "";
 
+    [JsonPropertyName("category")]
+    public string Category { get; set; } = "";
+
     [JsonPropertyName("name_ru")]
-    public string name_ru { get; set; } = "";
+    public string Name_Ru { get; set; } = "";
 
     [JsonPropertyName("name_kk")]
-    public string name_kk { get; set; } = "";
+    public string Name_Kk { get; set; } = "";
+
+    [JsonPropertyName("gramsPerXE")]
+    public double GramsPerXE { get; set; }
 
     [JsonPropertyName("carbsPer100")]
-    public double carbsPer100 { get; set; }
+    public double CarbsPer100 { get; set; }
 }
