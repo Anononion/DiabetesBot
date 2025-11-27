@@ -91,7 +91,12 @@ public class GlucoseModule
             return;
         }
 
-        user.Glucose.Add(new() { Value = value, Timestamp = DateTime.UtcNow });
+        user.Glucose.Add(new GlucoseEntry
+{
+    Value = (int)Math.Round(value),
+    Timestamp = DateTime.UtcNow
+});
+
 
         user.Phase = BotPhase.Glucose;
 
@@ -145,3 +150,4 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
