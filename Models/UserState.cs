@@ -4,9 +4,9 @@ public class UserState
 {
     public long UserId { get; set; }
 
-    // текущая фаза
+    // текущая фаза диалога
     public BotPhase Phase { get; set; } = BotPhase.MainMenu;
 
-    // выбранный язык
+    // язык пользователя
     public string Language { get; set; } = "ru";
 }
