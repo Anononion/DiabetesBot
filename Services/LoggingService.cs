@@ -1,4 +1,4 @@
-﻿using DiabetesBot.Utils;
+using DiabetesBot.Utils;
 using Telegram.Bot;
 
 namespace DiabetesBot.Services;
@@ -34,7 +34,7 @@ public class LoggingService
         }
         catch (Exception ex)
         {
-            Logger.Error("Failed to send admin notification", ex);
+            BotLogger.Error("Failed to send admin notification", ex);
         }
     }
 }
