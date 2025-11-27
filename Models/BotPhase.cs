@@ -1,43 +1,33 @@
 public enum BotPhase
 {
+    None = 0,
+
     // ===============================
     // ОСНОВНОЕ
     // ===============================
     MainMenu,
-
     Settings,
     LanguageChoice,
 
     // ===============================
     // ГЛЮКОЗА
     // ===============================
-    Glucose,                // Главное меню модуля "Глюкоза"
-    Glucose_SelectType,    // Ожидание выбора типа (до еды, после еды и т.д.)
-    Glucose_InputValue,    // Ожидание ввода числа
+    Glucose,                // Главное меню модуля Глюкозы
+    Glucose_SelectType,     // Ждём выбора: натощак / после еды / по времени
+    Glucose_InputValue,     // Ждём ввода числа
 
     // ===============================
-    // ХЛЕБНЫЕ ЕДИНИЦЫ (ХЕ)
+    // ХЛЕБНЫЕ ЕДИНИЦЫ
     // ===============================
-    BreadUnits,                        // Главное меню ХЕ
-    BreadUnits_SelectCategory,         // Выбор категории продукта
-    BreadUnits_SelectItem,             // Выбор конкретного продукта
-    BreadUnits_InputGrams,             // Ввод граммов
+    BreadUnits,
+    BreadUnits_SelectCategory,
+    BreadUnits_SelectItem,
+    BreadUnits_InputGrams,  // Ждём граммы
 
     // ===============================
     // ШКОЛА ДИАБЕТА
     // ===============================
-    DiabetesSchool,                   // Главное меню школы диабета
-    DiabetesSchool_SelectLesson,      // Выбор урока
-    DiabetesSchool_SelectPage         // Выбор страницы внутри урока
-
-    None = 0,
-
-    // === Glucose ===
-    Glucose_ValueInput = 10,
-
-    // === Xe ===
-    BreadUnits_EnterGrams = 20,
-
-    // === School ===
-    School_LessonNavigation = 30
+    DiabetesSchool,
+    DiabetesSchool_SelectLesson,
+    DiabetesSchool_SelectPage
 }
