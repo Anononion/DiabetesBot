@@ -1,77 +1,58 @@
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace DiabetesBot.Services;
+namespace DiabetesBot.Utils;
 
 public static class KeyboardBuilder
 {
-    // ============================
-    // LABELS
-    // ============================
-
-    public static string BtnGlucose(string lang) =>
-        lang == "kz" ? "Глюкоза📈" : "Глюкоза📈";
-
-    public static string BtnBreadUnits(string lang) =>
-        lang == "kz" ? "Нан бірліктері🍞" : "ХЕ🍞";
-
-    public static string BtnSchool(string lang) =>
-        lang == "kz" ? "Қант диабеті мектебі📚" : "Школа диабета📚";
-
-    public static string BtnSettings(string lang) =>
-        lang == "kz" ? "Баптаулар⚙️" : "Настройки⚙️";
-
-    public static string BtnBack(string lang) =>
-        lang == "kz" ? "Артқа" : "Назад";
-
-    public static string BtnLanguage(string lang) =>
-        lang == "kz" ? "Тіл🌐" : "Язык🌐";
-
-    public static string LangRu => "Русский 🇷🇺";
-    public static string LangKz => "Қазақша 🇰🇿";
+    public static string LangRu => "🇷🇺 Русский";
+    public static string LangKz => "🇰🇿 Қазақша";
 
     // ============================
     // MAIN MENU
     // ============================
-
-    public static IReplyMarkup MainMenu(string lang)
+    public static ReplyKeyboardMarkup MainMenu(string lang)
     {
+        string g = lang == "kz" ? "Глюкоза📈" : "Глюкоза📈";
+        string xe = lang == "kz" ? "ХЕ🍞" : "ХЕ🍞";
+        string sch = lang == "kz" ? "Диабет мектебі📚" : "Школа диабета📚";
+        string set = lang == "kz" ? "Баптаулар⚙️" : "Настройки⚙️";
+
         return new ReplyKeyboardMarkup(new[]
         {
-            new[]
-            {
-                BtnGlucose(lang),
-                BtnBreadUnits(lang)
-            },
-            new[]
-            {
-                BtnSchool(lang),
-                BtnSettings(lang)
-            }
+            new KeyboardButton[] { g },
+            new KeyboardButton[] { xe },
+            new KeyboardButton[] { sch },
+            new KeyboardButton[] { set }
         })
-        {
-            ResizeKeyboard = true
-        };
+        { ResizeKeyboard = true };
     }
 
     // ============================
-    // SETTINGS MENU
+    // SETTINGS
     // ============================
+    public static ReplyKeyboardMarkup SettingsMenu(string lang)
+    {
+        string langBtn = lang == "kz" ? "Тіл🌐" : "Язык🌐";
+        string back = lang == "kz" ? "⬅️ Артқа" : "⬅️ Назад";
 
-    public static IReplyMarkup SettingsMenu(string lang)
+        return new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { langBtn },
+            new KeyboardButton[] { back }
+        })
+        { ResizeKeyboard = true };
+    }
+
+    // ============================
+    // LANGUAGE SELECTOR
+    // ============================
+    public static ReplyKeyboardMarkup LanguageMenu()
     {
         return new ReplyKeyboardMarkup(new[]
         {
-            new[]
-            {
-                BtnLanguage(lang)
-            },
-            new[]
-            {
-                BtnBack(lang)
-            }
+            new KeyboardButton[] { LangRu },
+            new KeyboardButton[] { LangKz }
         })
-        {
-            ResizeKeyboard = true
-        };
+        { ResizeKeyboard = true };
     }
 }
