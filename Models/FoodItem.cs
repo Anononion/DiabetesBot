@@ -21,4 +21,8 @@ public class FoodItem
 
     [JsonPropertyName("carbsPer100")]
     public double CarbsPer100 { get; set; }
+
+    // 🔥 ДОБАВЛЯЕМ ОБЩЕЕ ИМЯ ДЛЯ СТАРОГО КОДА
+    [JsonIgnore]
+    public string Name => Name_Ru; // чтобы старый код не падал
 }
