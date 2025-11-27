@@ -27,13 +27,10 @@ public class BreadUnitsModule
         _foods = _storage.LoadFoodItems();
         _categories = _storage.LoadFoodCategories();
 
-        Logger.Info($"[BU] Загружено продуктов: {_foods.Count}");
-        Logger.Info($"[BU] Загружено категорий: {_categories.Count}");
+        BotLogger.Info($"[BU] Загружено продуктов: {_foods.Count}");
+        BotLogger.Info($"[BU] Загружено категорий: {_categories.Count}");
     }
 
-    // ------------------------------------------------------
-    // Главное меню
-    // ------------------------------------------------------
     public async Task ShowMain(long chatId, string lang, CancellationToken ct)
     {
         string add = lang == "kk" ? "➕ Өнім қосу" : "➕ Добавить продукт";
@@ -55,9 +52,6 @@ public class BreadUnitsModule
         await _bot.SendMessage(chatId, text, replyMarkup: kb, cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Обработка текстов
-    // ------------------------------------------------------
     public async Task HandleMessage(long chatId, string text, string lang, CancellationToken ct)
     {
         long userId = chatId;
@@ -79,15 +73,12 @@ public class BreadUnitsModule
         }
     }
 
-    // ------------------------------------------------------
-    // Обработка callback-кнопок
-    // ------------------------------------------------------
     public async Task HandleButton(long chatId, string data, CancellationToken ct)
     {
         if (!data.StartsWith("BU_"))
             return;
 
-        Logger.Info($"[BU] Click: {data}");
+        BotLogger.Info($"[BU] Click: {data}");
 
         if (data == "BU_ADD")
         {
@@ -113,9 +104,6 @@ public class BreadUnitsModule
         }
     }
 
-    // ------------------------------------------------------
-    // Нормализация строк
-    // ------------------------------------------------------
     private static string Normalize(string? s)
     {
         if (string.IsNullOrWhiteSpace(s))
@@ -130,12 +118,9 @@ public class BreadUnitsModule
         );
     }
 
-    // ------------------------------------------------------
-    // Выбор категории
-    // ------------------------------------------------------
     private async Task ShowCategoryMenu(long chatId, string lang, CancellationToken ct)
     {
-        Logger.Info("[BU] Открыто меню категорий");
+        BotLogger.Info("[BU] Открыто меню категорий");
 
         var rows = _categories.Keys
             .Select(c => new[]
@@ -154,12 +139,9 @@ public class BreadUnitsModule
             cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Список продуктов категории
-    // ------------------------------------------------------
     private async Task ShowProductsInCategory(long chatId, string cat, string lang, CancellationToken ct)
     {
-        Logger.Info($"[BU] Выбрана категория: '{cat}'");
+        BotLogger.Info($"[BU] Выбрана категория: '{cat}'");
 
         string normCat = Normalize(cat);
         var key = _categories.Keys.FirstOrDefault(k => Normalize(k) == normCat);
@@ -217,12 +199,9 @@ public class BreadUnitsModule
             cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Запрос веса
-    // ------------------------------------------------------
     private async Task AskWeight(long chatId, string id, string lang, CancellationToken ct)
     {
-        Logger.Info($"[BU] AskWeight id={id}");
+        BotLogger.Info($"[BU] AskWeight id={id}");
 
         long userId = chatId;
         _state.TempString(userId, "food_id", id);
@@ -245,9 +224,6 @@ public class BreadUnitsModule
         await _bot.SendMessage(chatId, text, cancellationToken: ct);
     }
 
-    // ------------------------------------------------------
-    // Обработка граммов
-    // ------------------------------------------------------
     public async Task HandleText(long chatId, string text, string lang, CancellationToken ct)
     {
         long userId = chatId;
@@ -301,9 +277,6 @@ public class BreadUnitsModule
         await ShowMain(chatId, lang, ct);
     }
 
-    // ------------------------------------------------------
-    // История ХЕ
-    // ------------------------------------------------------
     private async Task ShowHistory(long chatId, string lang, CancellationToken ct)
     {
         var list = _storage.LoadXeHistory(chatId);
