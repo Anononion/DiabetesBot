@@ -22,6 +22,10 @@ public class UserData
     public string? TempMeasurementType { get; set; }
 
     public string? TempSelectedFoodId { get; set; }
+
+    public int CurrentLesson { get; set; } = 0;
+    public int LessonPage { get; set; } = 0;
 }
+
 
 
