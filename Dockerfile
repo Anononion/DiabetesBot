@@ -1,20 +1,33 @@
+# =========================
+# BUILD STAGE
+# =========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
+WORKDIR /src
 
-COPY *.csproj ./
+# Копируем CSPROJ и восстанавливаем зависимости
+COPY DiabetesBot.csproj ./
 RUN dotnet restore
 
+# Копируем ВСЁ
 COPY . ./
-# 👇 ВАЖНО: копируем Data В ОБРАЗ
-COPY Data ./Data
 
-RUN dotnet publish -c Release -o out
+# Перекидываем Data В BUILDER
+COPY Data /src/Data
 
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
+# Публикуем
+RUN dotnet publish -c Release -o /app/out
+
+
+# =========================
+# RUNTIME STAGE
+# =========================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-COPY --from=build /app/out .
-# 👇 И сюда тоже
-COPY --from=build /app/Data ./Data
+# Копируем опубликованные файлы
+COPY --from=build /app/out ./
+
+# Копируем Data ТАКЖЕ В РАНТАЙМ
+COPY --from=build /src/Data ./Data
 
 ENTRYPOINT ["dotnet", "DiabetesBot.dll"]
