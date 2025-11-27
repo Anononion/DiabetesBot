@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Telegram.Bot.Types;
 using System.Text.Json;
+using DiabetesBot.Utils; // важно!
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +35,7 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
 
         if (update == null)
         {
-            Logger.Error("[WEBHOOK] Update == null");
+            BotLogger.Error("[WEBHOOK] Update == null");
             return Results.Ok();
         }
 
@@ -42,8 +43,8 @@ app.MapPost("/webhook/{token}", async (HttpContext ctx, string token, BotService
     }
     catch (Exception ex)
     {
-        Logger.Error("[WEBHOOK] Exception", ex);
-        return Results.Ok(); // не слать 500 telegram
+        BotLogger.Error("[WEBHOOK] Exception", ex);
+        return Results.Ok(); // не отдаём Telegram 500
     }
 
     return Results.Ok();
@@ -55,6 +56,7 @@ async Task RegisterWebhook()
     var bot = app.Services.GetRequiredService<BotService>();
     string url = $"https://diacare-2x9i.onrender.com/webhook/{token}";
     await bot.SetWebhookAsync(url);
+    BotLogger.Info($"Webhook set: {url}");
 }
 
 _ = RegisterWebhook();
