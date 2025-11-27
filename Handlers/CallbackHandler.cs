@@ -40,9 +40,12 @@ public class CallbackHandler
     public void SetCommandHandler(CommandHandler handler)
     {
         _commandHandler = handler;
-        Logger.Info("[CB] CommandHandler привязан к CallbackHandler");
+        Logger.Info("[CB] CommandHandler привязан");
     }
 
+    // ---------------------------------------------------------
+    // ГЛАВНАЯ ТОЧКА ВХОДА
+    // ---------------------------------------------------------
     public async Task HandleAsync(CallbackQuery query, CancellationToken ct)
     {
         if (query.Data is null)
@@ -55,17 +58,18 @@ public class CallbackHandler
         long chatId = query.Message!.Chat.Id;
         long userId = query.From.Id;
 
-        Logger.Info($"[CB] Callback: userId={userId}, chatId={chatId}, data='{data}'");
+        Logger.Info($"[CB] Callback: userId={userId}, data='{data}'");
 
-        // ------------------------------------------------------------------
-        // 1) ВЫБОР ЯЗЫКА
-        // ------------------------------------------------------------------
+        var user = await _storage.LoadAsync(userId);
+        string lang = user.Language ?? "ru";
+
+        // ---------------------------------------------------------
+        // 1) Смена языка
+        // ---------------------------------------------------------
         if (data == "lang_ru" || data == "lang_kk")
         {
-            var user = await _storage.LoadAsync(userId);
             user.Language = data == "lang_ru" ? "ru" : "kk";
             await _storage.SaveAsync(user);
-
             await _state.SetPhaseAsync(userId, UserPhase.MainMenu);
 
             string msg = user.Language == "ru"
@@ -74,43 +78,42 @@ public class CallbackHandler
 
             await _bot.SendMessage(chatId, msg, cancellationToken: ct);
 
-            // показать меню после смены языка
             if (_commandHandler != null)
                 await _commandHandler.SendMainMenuAsync(chatId, user.Language, ct);
 
             return;
         }
 
-        // ------------------------------------------------------------------
-        // 2) ГЛЮКОМЕТРИЯ — type выбора
-        // ------------------------------------------------------------------
+        // ---------------------------------------------------------
+        // 2) Глюкометрия
+        // ---------------------------------------------------------
         if (data.StartsWith("measure_"))
         {
             await _glucose.HandleCallbackAsync(query, ct);
             return;
         }
 
-        // ------------------------------------------------------------------
-        // 3) ХЛЕБНЫЕ ЕДИНИЦЫ
-        // ------------------------------------------------------------------
+        // ---------------------------------------------------------
+        // 3) Хлебные единицы (BU)
+        // ---------------------------------------------------------
         if (data.StartsWith("BU_"))
         {
             await _bu.HandleButton(chatId, data, ct);
             return;
         }
 
-        // ------------------------------------------------------------------
-        // 4) ШКОЛА ДИАБЕТА
-        // ------------------------------------------------------------------
+        // ---------------------------------------------------------
+        // 4) Школа диабета (DS)
+        // ---------------------------------------------------------
         if (data.StartsWith("DS_"))
         {
             await _school.HandleCallbackAsync(query, ct);
             return;
         }
 
-        // ------------------------------------------------------------------
-        // НЕИЗВЕСТНЫЙ CALLBACK
-        // ------------------------------------------------------------------
+        // ---------------------------------------------------------
+        // Fallback
+        // ---------------------------------------------------------
         Logger.Warn($"[CB] Неизвестный callback: {data}");
     }
 }
