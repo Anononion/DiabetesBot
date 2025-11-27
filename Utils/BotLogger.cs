@@ -35,7 +35,7 @@ public static class BotLogger
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    static Logger()
+    static BotLogger()
     {
         Directory.CreateDirectory(LogDir);
 
@@ -174,3 +174,4 @@ public static class BotLogger
         }
     }
 }
+
