@@ -16,11 +16,13 @@ public class CallbackHandler
 
     public CallbackHandler(
     ITelegramBotClient bot,
+    CommandHandler cmd,
     GlucoseModule glucose,
     BreadUnitsModule xe,
     DiabetesSchoolModule school)
     {
         _bot = bot;
+        _cmd = cmd;
         _glucose = glucose;
         _xe = xe;
         _school = school;
@@ -79,6 +81,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
