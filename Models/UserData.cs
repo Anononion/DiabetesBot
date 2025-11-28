@@ -37,8 +37,8 @@ public class UserData
     public List<GlucoseRecord> Glucose { get; set; } = new();
     public FoodItem? SelectedFood { get; set; }
     public string? TempGlucoseType { get; set; }
-    public string? TempGlucoseType { get; set; }
 }
+
 
 
 
