@@ -4,6 +4,7 @@ using DiabetesBot.Models;
 using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
+using Telegram.Bot.Types;
 
 namespace DiabetesBot.Modules;
 
@@ -178,4 +179,5 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
 
