@@ -66,7 +66,7 @@ public class GlucoseModule
 
         if (text.Contains("Добавить"))
         {
-            user.Phase = BotPhase.Glucose_TypeSelect;
+            user.Phase = BotPhase.Glucose_ValueInputType;
             await AskTypeAsync(user, chatId, ct);
             return;
         }
@@ -238,6 +238,7 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
 
 
 
