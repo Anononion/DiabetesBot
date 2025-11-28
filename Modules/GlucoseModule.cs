@@ -77,36 +77,44 @@ public class GlucoseModule
     // CALLBACKS
     // ---------------------------------------------------------
     public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
+{
+    if (cb.Data == null) return;
+
+    string data = cb.Data;
+
+    // обязательно отвечаем на callback, иначе будут зависания
+    await _bot.AnswerCallbackQueryAsync(cb.Id, cancellationToken: ct);
+
+    if (data == "GLU_TYPE:cancel")
     {
-        if (cb.Data == null) return;
+        user.TempGlucoseValue = null;
+        user.Phase = BotPhase.Glucose;
 
-        BotLogger.Info($"[GLU] Callback: {cb.Data}");
+        await _bot.SendMessage(cb.Message.Chat.Id,
+            user.Language == "kz" ? "Болдырылды." : "Отменено.",
+            cancellationToken: ct);
 
-        if (!cb.Data.StartsWith("GLU_TYPE:"))
-            return;
+        await ShowMenuAsync(user, cb.Message.Chat.Id, ct);
+        return;
+    }
 
-        string type = cb.Data.Split(':')[1];
+    if (data.StartsWith("GLU_TYPE:"))
+    {
+        string type = data.Split(':')[1]; // fasting/after/time
 
-        if (type == "cancel")
+        double? val = user.TempGlucoseValue;
+        if (val == null)
         {
-            user.Phase = BotPhase.Glucose;
-            await ShowMenuAsync(user, cb.Message.Chat.Id, ct);
-            return;
-        }
-
-        if (user.TempGlucoseValue == null)
-        {
+            // на всякий случай fallback
             await _bot.SendMessage(cb.Message.Chat.Id,
-                "Ошибка: нет временного значения.",
+                "Ошибка: нет значения.",
                 cancellationToken: ct);
-            user.Phase = BotPhase.Glucose;
             return;
         }
 
-        // Сохраняем запись
         user.Glucose.Add(new GlucoseRecord
         {
-            Value = user.TempGlucoseValue.Value,
+            Value = val.Value,
             Type = type,
             Time = DateTime.UtcNow
         });
@@ -114,11 +122,15 @@ public class GlucoseModule
         user.TempGlucoseValue = null;
         user.Phase = BotPhase.Glucose;
 
-        await _bot.AnswerCallback(cb.Id);
-        await _bot.SendMessage(cb.Message.Chat.Id, "Сохранено!", cancellationToken: ct);
+        await _bot.SendMessage(cb.Message.Chat.Id,
+            user.Language == "kz" ? "Сақталды!" : "Сохранено!",
+            cancellationToken: ct);
 
         await ShowMenuAsync(user, cb.Message.Chat.Id, ct);
+        return;
     }
+}
+
 
     // ---------------------------------------------------------
     // Ввод значения
@@ -232,4 +244,5 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
 
