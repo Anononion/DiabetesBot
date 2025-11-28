@@ -1,6 +1,6 @@
+using DiabetesBot.Services;
 using System.Collections.Concurrent;
 using DiabetesBot.Models;
-using DiabetesBot.Services; // ← добавить
 
 public static class StateStore
 {
