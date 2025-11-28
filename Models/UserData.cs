@@ -20,6 +20,7 @@ public class UserData
 
     // --- хлебные единицы ---
     public List<XeRecord> XeHistory { get; set; } = new();
+    public List<XeRecord> BreadUnits { get; set; } = new();
 
     public string? TempMeasurementType { get; set; }
     public string? TempSelectedFoodId { get; set; }
@@ -42,6 +43,7 @@ public class UserData
     public double? PendingGlucoseValue { get; set; }
 
 }
+
 
 
 
