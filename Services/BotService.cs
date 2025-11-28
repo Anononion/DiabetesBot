@@ -33,7 +33,7 @@ public class BotService
 
         // === Создаём хэндлеры ===
         _cmd = new CommandHandler(_bot, _glucose, _bread, _school);
-        _cb = new CallbackHandler(_bot, _glucose, _bread, _school);
+        _cb = new CallbackHandler(_bot, _cmd, _glucose, _bread, _school);
 
         BotLogger.Info("[BOT] BotService initialized successfully");
     }
@@ -87,6 +87,7 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
 
 
