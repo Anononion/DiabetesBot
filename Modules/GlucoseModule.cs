@@ -74,6 +74,15 @@ public class GlucoseModule
         await ShowMenuAsync(user, chatId, ct);
     }
 
+    
+    public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
+    {
+        // временная заглушка — чтобы не падало
+        BotLogger.Warn($"[GLU] Callback ignored: {cb.Data}");
+
+        await Task.CompletedTask;
+    }
+
     // ---------------------------------------------------------
     // Ввод значения (фаза Glucose_ValueInput)
     // ---------------------------------------------------------
@@ -169,3 +178,4 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
