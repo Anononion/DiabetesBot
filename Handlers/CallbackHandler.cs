@@ -41,6 +41,7 @@ public class CallbackHandler
 
     public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
     {
+        var user = UserState.Get(cb.From.Id); 
         long chatId = cb.Message!.Chat.Id;
         long uid = cb.From.Id;
         string data = cb.Data ?? "";
@@ -95,6 +96,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
