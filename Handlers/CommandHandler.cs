@@ -83,7 +83,7 @@ public class CommandHandler
                 break;
 
             case BotPhase.Glucose_ValueInputType:
-                await _glucose.HandleTypeTextAsync(user, chatId, text, ct);
+                await _glucose.HandleTypeText(user, chatId, text, ct);
                 break;
 
             case BotPhase.Glucose_TypeSelect:
@@ -261,6 +261,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
