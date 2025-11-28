@@ -97,21 +97,27 @@ public class CommandHandler
             // ШКОЛА ДИАБЕТА
             // ============================
             case BotPhase.DiabetesSchool:
+
+                // кнопка "Урок 1", "Урок 2", "Сабақ 1"…
+                if (text.StartsWith("Урок") || text.StartsWith("Сабақ"))
+                {        
+                    int num = int.Parse(text.Split(' ')[1]);
+                    await _school.ShowLessonsAsync(user, chatId, num, ct);
+                    return;
+                }
+
+                // кнопка подурока "1.1", "2.3" и т.п.
+                if (text.Contains("."))
+                {
+                    await _school.ShowLessonTextAsync(user, chatId, text, ct);
+                    return;
+                }
+
+                // просто открыть меню школы
                 await _school.ShowMainMenuAsync(user, chatId, ct);
-                break;
-
-            if (text.StartsWith("Урок") || text.StartsWith("Сабақ"))
-            {
-                int num = int.Parse(text.Split(' ')[1]);
-                await _school.ShowLessonsAsync(user, chatId, num, ct);
                 return;
-            }
 
-            if (text.Contains("."))
-            {
-                await _school.ShowLessonTextAsync(user, chatId, text, ct);
-                return;
-            }
+
 
             default:
                 BotLogger.Warn("[CMD] UNKNOWN PHASE → reset to MainMenu");
@@ -247,6 +253,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
