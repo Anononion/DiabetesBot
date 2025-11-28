@@ -14,7 +14,6 @@ namespace DiabetesBot.Models
         Glucose             = 10,
         Glucose_ValueInput  = 11,
         Glucose_ValueInputType = 12,
-        Glucose_ValueInputType  = 13,
 
         // Хлебные единицы
         BreadUnits              = 20,
