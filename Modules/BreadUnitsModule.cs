@@ -176,4 +176,30 @@ public class BreadUnitsModule
         user.Phase = BotPhase.BreadUnits;
         await ShowMenuAsync(user, chatId, ct);
     }
+
+    public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
+{
+    string data = cb.Data ?? "";
+
+    if (data.StartsWith("BU_CAT:"))
+    {
+        var cat = data.Split(':')[1];
+        await ShowProductsAsync(user, cb.Message.Chat.Id, cat, ct);
+        return;
+    }
+
+    if (data.StartsWith("BU_ITEM:"))
+    {
+        var id = data.Split(':')[1];
+        user.TempFoodId = id;
+        user.Phase = BotPhase.BreadUnits_EnterGrams;
+
+        await _bot.SendText(cb.Message.Chat.Id,
+            user.Language == "kz" ? "Грамм енгізіңіз:" : "Введите граммы:",
+            ct);
+
+        return;
+    }
 }
+}
+
