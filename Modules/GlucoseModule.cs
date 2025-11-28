@@ -48,7 +48,6 @@ public class GlucoseModule
         if (text.Contains("Назад") || text.Contains("Артқа"))
         {
             user.Phase = BotPhase.MainMenu;
-            StateStore.Save(user);
             return;
         }
 
@@ -67,8 +66,6 @@ public class GlucoseModule
         if (text.Contains("Добавить"))
         {
             user.Phase = BotPhase.Glucose_ValueInput;
-            StateStore.Save(user);
-
             await AskValueAsync(user, chatId, ct);
             return;
         }
@@ -94,7 +91,6 @@ public class GlucoseModule
         {
             user.Phase = BotPhase.Glucose;
             user.PendingGlucoseValue = null;
-            StateStore.Save(user);
 
             await ShowMenuAsync(user, chatId, ct);
             return;
@@ -113,7 +109,6 @@ public class GlucoseModule
 
         user.PendingGlucoseValue = value;
         user.Phase = BotPhase.Glucose_ValueInputType;
-        StateStore.Save(user);
 
         await AskTypeAsync(user, chatId, ct);
     }
@@ -160,7 +155,6 @@ public class GlucoseModule
         {
             user.PendingGlucoseValue = null;
             user.Phase = BotPhase.Glucose;
-            StateStore.Save(user);
 
             await _bot.SendMessage(
                 chatId,
@@ -175,7 +169,6 @@ public class GlucoseModule
         {
             // что-то пошло не так — просто выходим в меню
             user.Phase = BotPhase.Glucose;
-            StateStore.Save(user);
             await ShowMenuAsync(user, chatId, ct);
             return;
         }
@@ -209,7 +202,6 @@ public class GlucoseModule
 
         user.PendingGlucoseValue = null;
         user.Phase = BotPhase.Glucose;
-        StateStore.Save(user);
 
         await _bot.SendMessage(
             chatId,
@@ -271,3 +263,4 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
