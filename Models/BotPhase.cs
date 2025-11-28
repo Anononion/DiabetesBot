@@ -11,9 +11,10 @@ namespace DiabetesBot.Models
         LanguageChoice  = 3,
 
         // Блок глюкозы
-        Glucose             = 10,
-        Glucose_ValueInput  = 11,
-        Glucose_TypeSelect  = 12,
+        Glucose                 = 10,
+        Glucose_ValueInput      = 11,
+        Glucose_TypeSelect      = 12,   // ← ДОБАВИЛИ ЭТО
+        Glucose_ValueInputType  = 13,
 
         // Хлебные единицы
         BreadUnits              = 20,
