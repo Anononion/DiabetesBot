@@ -62,7 +62,7 @@ public class BotService
             if (update.CallbackQuery != null)
             {
                 BotLogger.Info("[BOT] Update received: type=CallbackQuery");
-                BotLogger.Info("[DEBUG] RAW CALLBACK: " + Json.Serialize(update));
+                BotLogger.Info("[DEBUG] RAW CALLBACK: " + JsonSerializer.Serialize(update));
                 await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
                 return;
             }
@@ -99,6 +99,7 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
 
 
