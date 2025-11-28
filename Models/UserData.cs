@@ -38,7 +38,11 @@ public class UserData
     public FoodItem? SelectedFood { get; set; }
     public string? TempGlucoseType { get; set; }
     public double? TempGlucoseValue { get; set; }
+    // временное значение, пока пользователь выбирает тип
+    public double? PendingGlucoseValue { get; set; }
+
 }
+
 
 
 
