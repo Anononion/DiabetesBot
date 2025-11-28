@@ -61,6 +61,8 @@ public class BotService
             // 1. CALLBACKS — по наличию, а НЕ по type
             if (update.CallbackQuery != null)
             {
+                BotLogger.Info("[BOT] Update received: type=CallbackQuery");
+                BotLogger.Info("[DEBUG] RAW CALLBACK: " + Json.Serialize(update));
                 await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
                 return;
             }
@@ -97,6 +99,7 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
 
 
