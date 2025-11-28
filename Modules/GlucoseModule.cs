@@ -132,22 +132,34 @@ public class GlucoseModule
 
     public async Task HandleValueInputAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
+        // Нормализуем точку/запятую
         var normalized = text.Replace(',', '.');
 
-        if (!double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out double value))
+        if (!double.TryParse(
+                normalized,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out double value))
         {
-            await _bot.SendMessage(chatId, user.Language == "kz" ? "Сан енгізіңіз!" : "Введите число!", cancellationToken: ct);
+            await _bot.SendMessage(chatId,
+                user.Language == "kz" ? "Сан енгізіңіз!" : "Введите число!",
+                cancellationToken: ct);
             return;
         }
 
+        // Временно сохраняем значение до выбора типа
         user.TempGlucoseValue = value;
-        user.Phase = BotPhase.Glucose_TypeSelect;
 
+        // Меняем фазу — ВАЖНО!!!
+        user.Phase = BotPhase.Glucose_ValueInputType;
+
+        // Показываем inline-кнопки выбора типа
         await _bot.SendMessage(chatId,
             user.Language == "kz" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:",
             replyMarkup: BuildTypeKeyboard(user),
             cancellationToken: ct);
     }
+
 
     // ---------------------------------------------------------
     // Inline клавиатура типа измерения
@@ -220,3 +232,4 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
