@@ -47,6 +47,7 @@ public class BotService
         try
         {
             BotLogger.Info($"[BOT] Update received: type={update.Type}");
+            BotLogger.Info("[DEBUG] RAW UPDATE: " + update);
 
             // 1. CALLBACKS — по наличию, а НЕ по type
             if (update.CallbackQuery != null)
@@ -87,6 +88,7 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
 
 
