@@ -55,7 +55,8 @@ public class BotService
                 WriteIndented = true,
                 DefaultIgnoreCondition = JsonIgnoreCondition.Never
             }    
-        )    
+        )
+    );
 
             // 1. CALLBACKS — по наличию, а НЕ по type
             if (update.CallbackQuery != null)
@@ -96,6 +97,7 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
 
 
 
