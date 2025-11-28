@@ -34,11 +34,10 @@ public class UserData
     public string? TempSubId { get; set; }         // НЕ ДУБЛИРУЕМ
 
     // --- ГЛЮКОЗА ---
-    public List<GlucoseEntry> Glucose { get; set; } = new();
-
+    public List<GlucoseRecord> Glucose { get; set; } = new();
     public FoodItem? SelectedFood { get; set; }
-
 }
+
 
 
 
