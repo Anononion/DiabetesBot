@@ -93,6 +93,15 @@ public class CallbackHandler
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
 
+    public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
+    {
+        // временная заглушка — чтобы не падало
+        BotLogger.Warn($"[GLU] Callback ignored: {cb.Data}");
+
+        await Task.CompletedTask;
+    }
+
+
     private static Message Fake(long chatId, long uid, string text) =>
         new Message
         {
@@ -101,4 +110,5 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
