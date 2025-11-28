@@ -15,11 +15,11 @@ public class CallbackHandler
     private readonly DiabetesSchoolModule _school;
 
     public CallbackHandler(
-    ITelegramBotClient bot,
-    CommandHandler cmd,
-    GlucoseModule glucose,
-    BreadUnitsModule xe,
-    DiabetesSchoolModule school)
+        ITelegramBotClient bot,
+        CommandHandler cmd,
+        GlucoseModule glucose,
+        BreadUnitsModule xe,
+        DiabetesSchoolModule school)
     {
         _bot = bot;
         _cmd = cmd;
@@ -30,25 +30,23 @@ public class CallbackHandler
 
     public async Task HandleCallbackAsync(CallbackQuery cb, CancellationToken ct)
     {
-        var user = UserState.Get(cb.From.Id);   // ← ОБЯЗАТЕЛЬНО
-
-        if (cb.Data == null)
+        if (cb.Data == null || cb.Message == null)
             return;
 
-        BotLogger.Info($"[CB] {cb.Data}");
-    }
-
-
-    public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
-    {
-        var user = UserState.Get(cb.From.Id); 
-        long chatId = cb.Message!.Chat.Id;
+        long chatId = cb.Message.Chat.Id;
         long uid = cb.From.Id;
-        string data = cb.Data ?? "";
+        string data = cb.Data;
+
+        // берём текущего пользователя из StateStore (как в CommandHandler)
+        var user = StateStore.Get(uid);
 
         BotLogger.Info($"[CB] {data}");
 
-        // Диабет-школа: Урок
+        // ============================
+        // ШКОЛА ДИАБЕТА — старый стиль
+        // ============================
+
+        // Урок: "school_lesson:1"
         if (data.StartsWith("school_lesson:"))
         {
             string id = data.Split(':')[1];      // "1"
@@ -56,15 +54,7 @@ public class CallbackHandler
             return;
         }
 
-        if (cb.Data!.StartsWith("DS_LESSON"))
-        {
-            await _school.HandleCallbackAsync(user, cb, ct);
-            return;
-        }
-
-
-
-        // Диабет-школа: Подурок
+        // Подурок: "school_sub:1.2"
         if (data.StartsWith("school_sub:"))
         {
             string raw = data.Split(':')[1];    // "1.2"
@@ -83,24 +73,25 @@ public class CallbackHandler
             await _cmd.HandleMessageAsync(Fake(chatId, uid, "Назад"), ct);
             return;
         }
+
+        // ============================
+        // ШКОЛА ДИАБЕТА — новый стиль DS_LESSON
+        // ============================
+        if (data.StartsWith("DS_LESSON"))
+        {
+            await _school.HandleCallbackAsync(user, cb, ct);
+            return;
+        }
+
+        // сюда позже можно добавить GLU_ / BU_ и т.п.
+        BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
 
-    
-
-
-    private static Message Fake(long chatId, long uid, string text)
-        => new Message
+    private static Message Fake(long chatId, long uid, string text) =>
+        new Message
         {
             Chat = new Chat { Id = chatId },
             From = new User { Id = uid },
             Text = text
         };
 }
-
-
-
-
-
-
-
-
