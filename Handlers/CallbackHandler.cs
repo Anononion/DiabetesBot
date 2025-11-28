@@ -83,6 +83,19 @@ public class CallbackHandler
             return;
         }
 
+        if (data.StartsWith("BU_CAT"))
+        {
+            await _bread.HandleCallbackAsync(user, cb, ct);
+            return;
+        }
+
+        if (data.StartsWith("BU_ITEM"))
+        {
+            await _bread.HandleCallbackAsync(user, cb, ct);
+            return;
+        }
+
+
     
         // сюда позже можно добавить GLU_ / BU_ и т.п.
         BotLogger.Warn($"[CB] Unknown callback: {data}");
@@ -98,6 +111,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
