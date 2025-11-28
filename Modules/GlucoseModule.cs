@@ -257,19 +257,42 @@ public class GlucoseModule
     // СТАТИСТИКА
     // --------------------------------------------------------------------
     private async Task SendStatsAsync(UserData user, long chatId, CancellationToken ct)
+{
+    if (user.Glucose.Count == 0)
     {
-        if (user.Glucose.Count == 0)
-        {
-            await _bot.SendMessage(chatId,
-                user.Language == "kz" ? "Статистика жоқ." : "Статистики нет.",
-                cancellationToken: ct);
-            return;
-        }
-
-        double avg = user.Glucose.Select(x => x.Value).Average();
-
         await _bot.SendMessage(chatId,
-            (user.Language == "kz" ? "Орташа мән: " : "Среднее значение: ") + avg.ToString("0.0"),
+            user.Language == "kz" ? "Статистика жоқ." : "Статистики нет.",
             cancellationToken: ct);
+        return;
     }
+
+    var values = user.Glucose.Select(x => x.Value).ToList();
+
+    double avg = values.Average();
+    double max = values.Max();
+    double min = values.Min();
+
+    string msg;
+
+    if (user.Language == "kz")
+    {
+        msg =
+            $"📊 *Статистика*\n" +
+            $"Орташа мән: *{avg:0.0}*\n" +
+            $"Жоғары мән: *{max:0.0}*\n" +
+            $"Төмен мән: *{min:0.0}*";
+    }
+    else
+    {
+        msg =
+            $"📊 *Статистика*\n" +
+            $"Среднее значение: *{avg:0.0}*\n" +
+            $"Максимум: *{max:0.0}*\n" +
+            $"Минимум: *{min:0.0}*";
+    }
+
+    await _bot.SendMessage(chatId, msg, parseMode: Telegram.Bot.Types.Enums.ParseMode.Markdown, cancellationToken: ct);
 }
+
+}
+
