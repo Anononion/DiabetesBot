@@ -93,13 +93,12 @@ public class CommandHandler
             // ХЕ
             // ============================
             case BotPhase.BreadUnits:
-                await _bread.HandleTextAsync(user, chatId, text, ct);
+                await _xe.HandleTextAsync(user, chatId, text, ct);
                 break;
 
             case BotPhase.BreadUnits_EnterGrams:
-                await _bread.HandleGramsAsync(user, chatId, text, ct);
+                await _xe.HandleGramsInputAsync(user, chatId, text, ct);
                 break;
-
 
             // ============================
             // ШКОЛА ДИАБЕТА
@@ -262,6 +261,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
