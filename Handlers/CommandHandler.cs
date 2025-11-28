@@ -97,42 +97,21 @@ public class CommandHandler
             // ШКОЛА ДИАБЕТА
             // ============================
             case BotPhase.DiabetesSchool:
+                await _school.ShowMainMenuAsync(user, chatId, ct);
+                break;
 
-    if (text.Contains("Назад") || text.Contains("Артқа"))
-    {
-        user.Phase = BotPhase.MainMenu;
-        await SendMainMenuAsync(user, chatId, ct);
-        return;
-    }
+            if (text.StartsWith("Урок") || text.StartsWith("Сабақ"))
+            {
+                int num = int.Parse(text.Split(' ')[1]);
+                await _school.ShowLessonsAsync(user, chatId, num, ct);
+                return;
+            }
 
-    // Урок 1
-    if (text.StartsWith("Урок") || text.StartsWith("Сабақ"))
-    {
-        int id = int.Parse(text.Split(' ')[1]);
-        await _school.ShowSubLessonsAsync(user, chatId, id, ct);
-        return;
-    }
-
-    // Подурок 1.1
-    if (text.Contains("."))
-    {
-        var parts = text.Split('.');
-        int lessonId = int.Parse(parts[0]);
-        int subId = int.Parse(parts[1]);
-
-        await _school.ShowPageAsync(user, chatId, lessonId, subId, ct);
-        return;
-    }
-
-    if (text == "Далее" || text == "Келесі")
-    {
-        await _school.ShowNextPageAsync(user, chatId, ct);
-        return;
-    }
-
-    await _school.ShowLessonsAsync(user, chatId, ct);
-    return;
-
+            if (text.Contains("."))
+            {
+                await _school.ShowLessonTextAsync(user, chatId, text, ct);
+                return;
+            }
 
             default:
                 BotLogger.Warn("[CMD] UNKNOWN PHASE → reset to MainMenu");
@@ -268,5 +247,6 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
