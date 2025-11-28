@@ -14,7 +14,7 @@ public class BreadUnitsModule
 {
     private readonly ITelegramBotClient _bot;
 
-    // category → list of foods
+    // category → items
     private Dictionary<string, List<FoodItem>> _foods = new();
 
     public BreadUnitsModule(ITelegramBotClient bot)
@@ -24,27 +24,27 @@ public class BreadUnitsModule
     }
 
     // ====================================================================
-    // LOAD JSON — matches your actual structure
+    // ЗАГРУЗКА JSON
     // ====================================================================
     private void Load()
     {
         string foodsPath = Path.Combine("Data", "foods.json");
-        var items = JsonConvert.DeserializeObject<List<FoodItem>>(File.ReadAllText(foodsPath));
 
+        var items = JsonConvert.DeserializeObject<List<FoodItem>>(File.ReadAllText(foodsPath));
         if (items == null)
         {
             _foods = new Dictionary<string, List<FoodItem>>();
             return;
         }
 
-        // group by category field inside JSON
+        // группируем по Category (как у тебя в JSON)
         _foods = items
             .GroupBy(f => f.Category)
             .ToDictionary(g => g.Key, g => g.ToList());
     }
 
     // ====================================================================
-    // MAIN MENU
+    // ГЛАВНОЕ МЕНЮ
     // ====================================================================
     public async Task ShowMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
@@ -82,14 +82,14 @@ public class BreadUnitsModule
     }
 
     // ====================================================================
-    // SHOW CATEGORIES
+    // ПОКАЗАТЬ КАТЕГОРИИ
     // ====================================================================
     public async Task ShowCategoriesAsync(long chatId, CancellationToken ct)
     {
         var ik = new InlineKeyboardMarkup(
             _foods.Keys.Select(cat =>
                 InlineKeyboardButton.WithCallbackData(cat, $"xe_cat:{cat}")
-            )
+            ).ToArray()
         );
 
         await _bot.SendMessage(chatId,
@@ -99,7 +99,7 @@ public class BreadUnitsModule
     }
 
     // ====================================================================
-    // SHOW ITEMS IN CATEGORY
+    // ПОКАЗАТЬ ПРОДУКТЫ КАТЕГОРИИ
     // ====================================================================
     public async Task ShowItemsByCategoryAsync(UserData user, long chatId, string category, CancellationToken ct)
     {
@@ -109,14 +109,14 @@ public class BreadUnitsModule
             return;
         }
 
-        var ik = new InlineKeyboardMarkup(
-            items.Select(i =>
-                InlineKeyboardButton.WithCallbackData(
-                    $"{(user.Language == \"kz\" ? i.NameKk : i.NameRu)} ({i.GramsPerXE} г = 1 ХЕ)",
-                    $"xe_item:{i.Id}"
-                )
+        var buttons = items.Select(i =>
+            InlineKeyboardButton.WithCallbackData(
+                $"{(user.Language == "kz" ? i.NameKk : i.NameRu)} ({i.GramsPerXE} г = 1 ХЕ)",
+                $"xe_item:{i.Id}"
             )
-        );
+        ).ToArray();
+
+        var ik = new InlineKeyboardMarkup(buttons);
 
         await _bot.SendMessage(chatId,
             $"Категория: {category}",
@@ -125,12 +125,11 @@ public class BreadUnitsModule
     }
 
     // ====================================================================
-    // SELECT ITEM
+    // ВЫБОР ПРОДУКТА
     // ====================================================================
     public async Task SelectItemAsync(UserData user, long chatId, string itemId, CancellationToken ct)
     {
-        var all = _foods.Values.SelectMany(x => x);
-        var item = all.FirstOrDefault(x => x.Id == itemId);
+        var item = _foods.Values.SelectMany(x => x).FirstOrDefault(x => x.Id == itemId);
 
         if (item == null)
         {
@@ -149,13 +148,16 @@ public class BreadUnitsModule
     }
 
     // ====================================================================
-    // HANDLE GRAMS INPUT
+    // ВВОД ГРАММ
     // ====================================================================
     public async Task HandleGramsInputAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
         if (user.SelectedFood == null)
         {
-            await _bot.SendMessage(chatId, "Сначала выберите продукт через категории.", cancellationToken: ct);
+            await _bot.SendMessage(chatId,
+                "Сначала выберите продукт через категории.",
+                cancellationToken: ct);
+
             user.Phase = BotPhase.BreadUnits;
             await ShowMenuAsync(user, chatId, ct);
             return;
@@ -168,7 +170,6 @@ public class BreadUnitsModule
         }
 
         var item = user.SelectedFood;
-
         double xe = grams / item.GramsPerXE;
 
         var record = new XeRecord
@@ -180,7 +181,7 @@ public class BreadUnitsModule
         };
 
         user.XeHistory.Add(record);
-        user.BreadUnits.Add(record); // если хочешь хранить и вторая коллекция
+        user.BreadUnits.Add(record);
 
         user.Phase = BotPhase.BreadUnits;
 
