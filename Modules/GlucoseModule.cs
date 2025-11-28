@@ -4,7 +4,6 @@ using DiabetesBot.Models;
 using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types.ReplyMarkups;
-using Telegram.Bot.Types;
 
 namespace DiabetesBot.Modules;
 
@@ -18,7 +17,7 @@ public class GlucoseModule
     }
 
     // ---------------------------------------------------------
-    // Главное меню Глюкозы
+    // Главное меню глюкозы
     // ---------------------------------------------------------
     public async Task ShowMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
@@ -26,15 +25,16 @@ public class GlucoseModule
 
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { "📋 История", "📊 Статистика" },
-            new KeyboardButton[] { "➕ Добавить измерение" },
-            new KeyboardButton[] { user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад" }
+            new[] { new KeyboardButton("📋 История"), new KeyboardButton("📊 Статистика") },
+            new[] { new KeyboardButton("➕ Добавить измерение") },
+            new[] { new KeyboardButton(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад") }
         })
         {
             ResizeKeyboard = true
         };
 
-        await _bot.SendMessage(chatId,
+        await _bot.SendMessage(
+            chatId,
             user.Language == "kz" ? "Глюкоза мәзірі:" : "Меню глюкозы:",
             replyMarkup: kb,
             cancellationToken: ct);
@@ -48,6 +48,7 @@ public class GlucoseModule
         if (text.Contains("Назад") || text.Contains("Артқа"))
         {
             user.Phase = BotPhase.MainMenu;
+            StateStore.Save(user);
             return;
         }
 
@@ -66,6 +67,8 @@ public class GlucoseModule
         if (text.Contains("Добавить"))
         {
             user.Phase = BotPhase.Glucose_ValueInput;
+            StateStore.Save(user);
+
             await AskValueAsync(user, chatId, ct);
             return;
         }
@@ -74,128 +77,146 @@ public class GlucoseModule
     }
 
     // ---------------------------------------------------------
-    // CALLBACKS
-    // ---------------------------------------------------------
-    public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
-{
-    if (cb.Data == null) return;
-
-    string data = cb.Data;
-
-    // обязательно отвечаем на callback, иначе будут зависания
-    await _bot.AnswerCallbackQueryAsync(cb.Id, cancellationToken: ct);
-
-    if (data == "GLU_TYPE:cancel")
-    {
-        user.TempGlucoseValue = null;
-        user.Phase = BotPhase.Glucose;
-
-        await _bot.SendMessage(cb.Message.Chat.Id,
-            user.Language == "kz" ? "Болдырылды." : "Отменено.",
-            cancellationToken: ct);
-
-        await ShowMenuAsync(user, cb.Message.Chat.Id, ct);
-        return;
-    }
-
-    if (data.StartsWith("GLU_TYPE:"))
-    {
-        string type = data.Split(':')[1]; // fasting/after/time
-
-        double? val = user.TempGlucoseValue;
-        if (val == null)
-        {
-            // на всякий случай fallback
-            await _bot.SendMessage(cb.Message.Chat.Id,
-                "Ошибка: нет значения.",
-                cancellationToken: ct);
-            return;
-        }
-
-        user.Glucose.Add(new GlucoseRecord
-        {
-            Value = val.Value,
-            Type = type,
-            Time = DateTime.UtcNow
-        });
-
-        user.TempGlucoseValue = null;
-        user.Phase = BotPhase.Glucose;
-
-        await _bot.SendMessage(cb.Message.Chat.Id,
-            user.Language == "kz" ? "Сақталды!" : "Сохранено!",
-            cancellationToken: ct);
-
-        await ShowMenuAsync(user, cb.Message.Chat.Id, ct);
-        return;
-    }
-}
-
-
-    // ---------------------------------------------------------
-    // Ввод значения
+    // Ввод значения (фаза Glucose_ValueInput)
     // ---------------------------------------------------------
     public async Task AskValueAsync(UserData user, long chatId, CancellationToken ct)
     {
-        await _bot.SendMessage(chatId,
+        await _bot.SendMessage(
+            chatId,
             user.Language == "kz" ? "Мәнді енгізіңіз:" : "Введите значение:",
             cancellationToken: ct);
     }
 
     public async Task HandleValueInputAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
-        // Нормализуем точку/запятую
+        // локальный "назад"
+        if (text.Contains("Назад") || text.Contains("Артқа"))
+        {
+            user.Phase = BotPhase.Glucose;
+            user.PendingGlucoseValue = null;
+            StateStore.Save(user);
+
+            await ShowMenuAsync(user, chatId, ct);
+            return;
+        }
+
         var normalized = text.Replace(',', '.');
 
-        if (!double.TryParse(
-                normalized,
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out double value))
+        if (!double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
         {
-            await _bot.SendMessage(chatId,
+            await _bot.SendMessage(
+                chatId,
                 user.Language == "kz" ? "Сан енгізіңіз!" : "Введите число!",
                 cancellationToken: ct);
             return;
         }
 
-        // Временно сохраняем значение до выбора типа
-        user.TempGlucoseValue = value;
-
-        // Меняем фазу — ВАЖНО!!!
+        user.PendingGlucoseValue = value;
         user.Phase = BotPhase.Glucose_ValueInputType;
+        StateStore.Save(user);
 
-        // Показываем inline-кнопки выбора типа
-        await _bot.SendMessage(chatId,
-            user.Language == "kz" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:",
-            replyMarkup: BuildTypeKeyboard(user),
-            cancellationToken: ct);
+        await AskTypeAsync(user, chatId, ct);
     }
 
-
     // ---------------------------------------------------------
-    // Inline клавиатура типа измерения
+    // Выбор типа (фаза Glucose_ValueInputType) — обычная клавиатура
     // ---------------------------------------------------------
-    private InlineKeyboardMarkup BuildTypeKeyboard(UserData user)
+    public async Task AskTypeAsync(UserData user, long chatId, CancellationToken ct)
     {
         bool ru = user.Language == "ru";
 
-        return new InlineKeyboardMarkup(new[]
+        var kb = new ReplyKeyboardMarkup(new[]
         {
             new[]
             {
-                InlineKeyboardButton.WithCallbackData(ru ? "🕒 Натощак"   : "🕒 Ашқарын",       "GLU_TYPE:fasting"),
-                InlineKeyboardButton.WithCallbackData(ru ? "🍽 После еды" : "🍽 Тамақтан соң", "GLU_TYPE:after")
+                new KeyboardButton(ru ? "🕒 Натощак"    : "🕒 Ашқарын"),
+                new KeyboardButton(ru ? "🍽 После еды" : "🍽 Тамақтан соң")
             },
             new[]
             {
-                InlineKeyboardButton.WithCallbackData(ru ? "⏱ По времени" : "⏱ Уақыт бойынша", "GLU_TYPE:time")
+                new KeyboardButton(ru ? "⏱ По времени" : "⏱ Уақыт бойынша")
             },
             new[]
             {
-                InlineKeyboardButton.WithCallbackData(ru ? "❌ Отмена" : "❌ Болдырмау", "GLU_TYPE:cancel")
+                new KeyboardButton(ru ? "❌ Отмена" : "❌ Болдырмау")
             }
+        })
+        {
+            ResizeKeyboard = true
+        };
+
+        await _bot.SendMessage(
+            chatId,
+            ru ? "Выберите тип измерения:" : "Өлшеу түрін таңдаңыз:",
+            replyMarkup: kb,
+            cancellationToken: ct);
+    }
+
+    public async Task HandleTypeTextAsync(UserData user, long chatId, string text, CancellationToken ct)
+    {
+        bool ru = user.Language == "ru";
+
+        if (text.Contains("Отмена") || text.Contains("Болдырмау"))
+        {
+            user.PendingGlucoseValue = null;
+            user.Phase = BotPhase.Glucose;
+            StateStore.Save(user);
+
+            await _bot.SendMessage(
+                chatId,
+                ru ? "Отменено." : "Болдырылды.",
+                cancellationToken: ct);
+
+            await ShowMenuAsync(user, chatId, ct);
+            return;
+        }
+
+        if (user.PendingGlucoseValue == null)
+        {
+            // что-то пошло не так — просто выходим в меню
+            user.Phase = BotPhase.Glucose;
+            StateStore.Save(user);
+            await ShowMenuAsync(user, chatId, ct);
+            return;
+        }
+
+        string typeCode;
+        if (text.Contains("Натощак") || text.Contains("Ашқарын"))
+            typeCode = "fasting";
+        else if (text.Contains("После еды") || text.Contains("Тамақтан соң"))
+            typeCode = "after";
+        else if (text.Contains("По времени") || text.Contains("Уақыт бойынша"))
+            typeCode = "time";
+        else
+        {
+            await _bot.SendMessage(
+                chatId,
+                ru
+                    ? "Пожалуйста, выберите вариант с клавиатуры."
+                    : "Пернетақтадағы нұсқалардың бірін таңдаңыз.",
+                cancellationToken: ct);
+
+            await AskTypeAsync(user, chatId, ct);
+            return;
+        }
+
+        user.Glucose.Add(new GlucoseRecord
+        {
+            Value = user.PendingGlucoseValue.Value,
+            Type  = typeCode,
+            Time  = DateTime.UtcNow
         });
+
+        user.PendingGlucoseValue = null;
+        user.Phase = BotPhase.Glucose;
+        StateStore.Save(user);
+
+        await _bot.SendMessage(
+            chatId,
+            ru ? "Сохранено!" : "Сақталды!",
+            cancellationToken: ct);
+
+        await ShowMenuAsync(user, chatId, ct);
     }
 
     // ---------------------------------------------------------
@@ -205,7 +226,10 @@ public class GlucoseModule
     {
         if (user.Glucose.Count == 0)
         {
-            await _bot.SendMessage(chatId, user.Language == "kz" ? "Өлшеулер жоқ." : "Нет измерений.", cancellationToken: ct);
+            await _bot.SendMessage(
+                chatId,
+                user.Language == "kz" ? "Өлшеулер жоқ." : "Нет измерений.",
+                cancellationToken: ct);
             return;
         }
 
@@ -219,8 +243,7 @@ public class GlucoseModule
                     var t = x.Time.ToLocalTime();
                     var typePart = string.IsNullOrWhiteSpace(x.Type) ? "" : $" ({x.Type})";
                     return $"{t:dd.MM HH:mm} — {x.Value:0.0}{typePart}";
-                })
-        );
+                }));
 
         await _bot.SendMessage(chatId, msg, cancellationToken: ct);
     }
@@ -232,17 +255,19 @@ public class GlucoseModule
     {
         if (user.Glucose.Count == 0)
         {
-            await _bot.SendMessage(chatId, user.Language == "kz" ? "Статистика жоқ." : "Статистики нет.", cancellationToken: ct);
+            await _bot.SendMessage(
+                chatId,
+                user.Language == "kz" ? "Статистика жоқ." : "Статистики нет.",
+                cancellationToken: ct);
             return;
         }
 
         var arr = user.Glucose.Select(x => x.Value).ToArray();
         double avg = arr.Average();
 
-        await _bot.SendMessage(chatId,
+        await _bot.SendMessage(
+            chatId,
             (user.Language == "kz" ? "Орташа мән: " : "Среднее значение: ") + avg.ToString("0.0"),
             cancellationToken: ct);
     }
 }
-
-
