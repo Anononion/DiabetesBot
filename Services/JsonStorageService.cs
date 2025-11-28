@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using DiabetesBot.Models;
 using DiabetesBot.Utils;
 using DiabetesBot.Utils.Crypto;
@@ -7,14 +7,14 @@ namespace DiabetesBot.Services;
 
 public class JsonStorageService
 {
-    // ---- определяем корень проекта ----
     private static string ProjectRoot
     {
         get
         {
             string dir = AppContext.BaseDirectory;
 
-            while (dir != null && !Directory.GetFiles(dir).Any(f => f.EndsWith("Program.cs")))
+            while (dir != null && !Directory.GetFiles(dir)
+                       .Any(f => f.EndsWith("Program.cs")))
             {
                 dir = Directory.GetParent(dir)?.FullName;
             }
@@ -33,20 +33,9 @@ public class JsonStorageService
         PropertyNameCaseInsensitive = true
     };
 
-    private static void DebugLog(string msg)
-    {
-        try
-        {
-            Directory.CreateDirectory(LogsDir);
-            File.AppendAllText(
-                Path.Combine(LogsDir, "debug_paths.log"),
-                $"{DateTime.Now:O} {msg}{Environment.NewLine}"
-            );
-        }
-        catch { }
-    }
-
-    // ---------------- user main file ----------------
+    // -----------------------------------------------------------
+    // USER MAIN JSON (encrypted)
+    // -----------------------------------------------------------
 
     public async Task<UserData> LoadAsync(long userId)
     {
@@ -57,6 +46,7 @@ public class JsonStorageService
             return new UserData { UserId = userId };
 
         string raw = await File.ReadAllTextAsync(path);
+
         string json = raw;
 
         bool isBase64 =
@@ -88,7 +78,9 @@ public class JsonStorageService
         await File.WriteAllTextAsync(path, encrypted);
     }
 
-    // ---------------- user additional files ----------------
+    // -----------------------------------------------------------
+    // USER SUBFILES (plain JSON)
+    // -----------------------------------------------------------
 
     private string UserFolder(long id) => Path.Combine(UsersDir, id.ToString());
     private string FilePath(long id, string name) => Path.Combine(UserFolder(id), name);
@@ -101,8 +93,8 @@ public class JsonStorageService
         if (!File.Exists(path))
             return new List<T>();
 
-        var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<List<T>>(json) ?? new List<T>();
+        return JsonSerializer.Deserialize<List<T>>(File.ReadAllText(path))
+               ?? new List<T>();
     }
 
     public void SaveUserFile<T>(long userId, string fileName, List<T> list)
@@ -110,11 +102,17 @@ public class JsonStorageService
         Directory.CreateDirectory(UserFolder(userId));
         string path = FilePath(userId, fileName);
 
-        var json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(list, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
         File.WriteAllText(path, json);
     }
 
-    // ---------------- XE history ----------------
+    // -----------------------------------------------------------
+    // XE HISTORY
+    // -----------------------------------------------------------
 
     public List<XeRecord> LoadXeHistory(long userId)
         => LoadUserFile<XeRecord>(userId, "xe_history.json");
@@ -126,30 +124,26 @@ public class JsonStorageService
         SaveUserFile(userId, "xe_history.json", list);
     }
 
-    // ---------------- STATIC JSONS (foods.json, categories) ----------------
+    // -----------------------------------------------------------
+    // STATIC JSON (foods / categories)
+    // -----------------------------------------------------------
 
     public List<FoodItem> LoadFoodItems()
     {
         string path = Path.Combine(UsersDir, "foods.json");
 
-        DebugLog($"LoadFoodItems: ProjectRoot={ProjectRoot}, UsersDir={UsersDir}, Path={path}, Exists={File.Exists(path)}");
-
         if (!File.Exists(path))
-            throw new FileNotFoundException($"foods.json НЕ найден: {path}");
+            throw new FileNotFoundException("foods.json NOT FOUND: " + path);
 
-        var raw = File.ReadAllText(path);
-        Logger.Info($"[BU] foods.json RAW:\n{raw}");
-        return JsonSerializer.Deserialize<List<FoodItem>>(raw)!;
+        return JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(path))!;
     }
 
     public Dictionary<string, List<string>> LoadFoodCategories()
     {
         string path = Path.Combine(UsersDir, "food_categories.json");
 
-        DebugLog($"LoadFoodCategories: ProjectRoot={ProjectRoot}, UsersDir={UsersDir}, Path={path}, Exists={File.Exists(path)}");
-
         if (!File.Exists(path))
-            throw new FileNotFoundException($"food_categories.json НЕ найден: {path}");
+            throw new FileNotFoundException("food_categories.json NOT FOUND: " + path);
 
         return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path))!;
     }
