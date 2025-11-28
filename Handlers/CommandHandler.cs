@@ -85,6 +85,9 @@ public class CommandHandler
                 // ничего не делаем, ждём callback
                 return;
 
+            case BotPhase.Glucose_TypeSelect:
+                return;
+
             // ============================
             // ХЕ
             // ============================
@@ -133,45 +136,46 @@ public class CommandHandler
     // ============================================================
     // MAIN MENU
     // ============================================================
-    private async Task HandleMainMenuAsync(UserData user, long chatId, string text, CancellationToken ct)
+   private async Task HandleMainMenuAsync(UserData user, long chatId, string text, CancellationToken ct)
+{
+    var lang = user.Language;
+
+    string xe  = lang == "kz" ? "ХЕ🍞" : "ХЕ🍞";
+    string sch = lang == "kz" ? "Диабет мектебі📚" : "Школа диабета📚";
+    string set = lang == "kz" ? "Баптаулар⚙️" : "Настройки⚙️";
+
+    // ---- ГЛЮКОЗА ----
+    if (text.StartsWith("Глюкоза"))
     {
-        var lang = user.Language;
-
-        string g = lang == "kz" ? "Глюкоза📈" : "Глюкоза📈";
-        string xe = lang == "kz" ? "ХЕ🍞" : "ХЕ🍞";
-        string sch = lang == "kz" ? "Диабет мектебі📚" : "Школа диабета📚";
-        string set = lang == "kz" ? "Баптаулар⚙️" : "Настройки⚙️";
-
-        if (text == g)
-        {
-            user.Phase = BotPhase.Glucose;
-            await _glucose.ShowMenuAsync(user, chatId, ct);
-            return;
-        }
-
-        if (text == xe)
-        {
-            user.Phase = BotPhase.BreadUnits;
-            await _breadUnits.ShowMenuAsync(user, chatId, ct);
-            return;
-        }
-
-        if (text == sch)
-        {
-            user.Phase = BotPhase.DiabetesSchool;
-            await _school.ShowMainMenuAsync(user, chatId, ct);
-            return;
-        }
-
-        if (text == set)
-        {
-            user.Phase = BotPhase.Settings;
-            await SendSettingsMenuAsync(user, chatId, ct);
-            return;
-        }
-
-        await SendMainMenuAsync(user, chatId, ct);
+        user.Phase = BotPhase.Glucose;
+        await _glucose.ShowMenuAsync(user, chatId, ct);
+        return;
     }
+
+    if (text == xe)
+    {
+        user.Phase = BotPhase.BreadUnits;
+        await _breadUnits.ShowMenuAsync(user, chatId, ct);
+        return;
+    }
+
+    if (text == sch)
+    {
+        user.Phase = BotPhase.DiabetesSchool;
+        await _school.ShowMainMenuAsync(user, chatId, ct);
+        return;
+    }
+
+    if (text == set)
+    {
+        user.Phase = BotPhase.Settings;
+        await SendSettingsMenuAsync(user, chatId, ct);
+        return;
+    }
+
+    await SendMainMenuAsync(user, chatId, ct);
+}
+
 
     // ============================================================
     // SETTINGS
@@ -256,6 +260,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
