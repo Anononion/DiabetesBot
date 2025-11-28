@@ -91,7 +91,6 @@ public class GlucoseModule
         {
             user.TempGlucoseType = null;
             user.Phase = BotPhase.Glucose;
-            StateStore.Save(user);
 
             await ShowMenuAsync(user, chatId, ct);
             return;
@@ -100,7 +99,6 @@ public class GlucoseModule
         // сохраняем тип
         user.TempGlucoseType = type;
         user.Phase = BotPhase.Glucose_ValueInput;
-        StateStore.Save(user);
 
         // спрашиваем значение
         await _bot.SendMessage(chatId,
@@ -240,6 +238,7 @@ public class GlucoseModule
             cancellationToken: ct);
     }
 }
+
 
 
 
