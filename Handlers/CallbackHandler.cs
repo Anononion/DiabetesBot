@@ -37,7 +37,7 @@ public class CallbackHandler
         long uid = cb.From.Id;
         string data = cb.Data;
 
-        // берём текущего пользователя из StateStore (как в CommandHandler)
+        // текущее состояние пользователя
         var user = StateStore.Get(uid);
 
         BotLogger.Info($"[CB] {data}");
@@ -83,25 +83,33 @@ public class CallbackHandler
             return;
         }
 
+        // ============================
+        // ГЛЮКОЗА (типы измерений)
+        // ============================
+        if (data.StartsWith("GLU_TYPE"))
+        {
+            await _glucose.HandleCallbackAsync(user, cb, ct);
+            return;
+        }
+
+        // ============================
+        // ХЛЕБНЫЕ ЕДИНИЦЫ (XE)
+        // ============================
         if (data.StartsWith("BU_CAT"))
         {
-            await _bread.HandleCallbackAsync(user, cb, ct);
+            await _xe.HandleCallbackAsync(user, cb, ct);
             return;
         }
 
         if (data.StartsWith("BU_ITEM"))
         {
-            await _bread.HandleCallbackAsync(user, cb, ct);
+            await _xe.HandleCallbackAsync(user, cb, ct);
             return;
         }
 
-
-    
-        // сюда позже можно добавить GLU_ / BU_ и т.п.
+        // сюда позже можно добавить другие префиксы
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
-
-
 
     private static Message Fake(long chatId, long uid, string text) =>
         new Message
@@ -111,8 +119,3 @@ public class CallbackHandler
             Text = text
         };
 }
-
-
-
-
-
