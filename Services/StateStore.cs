@@ -1,90 +1,65 @@
-using System.Text.Json;
+using System.Collections.Concurrent;
 using DiabetesBot.Models;
-using DiabetesBot.Utils.Crypto;
 
 public static class StateStore
 {
-    private static readonly Dictionary<long, UserData> _users = new();
-    private static readonly string Dir = "Data/users";
+    private static readonly ConcurrentDictionary<long, UserData> _users = new();
+    private static readonly JsonStorageService _storage = new JsonStorageService();
 
-    static StateStore()
+    // ------------------------------
+    // Получение пользователя
+    // ------------------------------
+    public static UserData Get(long userId)
     {
-        if (!Directory.Exists(Dir))
-            Directory.CreateDirectory(Dir);
-    }
+        // Если уже есть в оперативке — отдаём сразу
+        if (_users.TryGetValue(userId, out var cached))
+            return cached;
 
-    // -----------------------------
-    // Получить пользователя
-    // -----------------------------
-    public static UserData Get(long id)
-    {
-        if (_users.TryGetValue(id, out var user))
-            return user;
+        // Пытаемся загрузить из файла
+        var loaded = _storage.LoadAsync(userId).Result;
 
-        user = LoadFromFile(id);
-        _users[id] = user;
-
-        return user;
-    }
-
-    // -----------------------------
-    // Сохранение
-    // -----------------------------
-    public static void Save(long id, UserData user)
-    {
-        try
+        // Если файл не найден — создаём пустого
+        if (loaded == null)
         {
-            var json = JsonSerializer.Serialize(user, new JsonSerializerOptions
+            loaded = new UserData
             {
-                WriteIndented = true
-            });
+                UserId = userId,
+                Language = "ru",
+                Phase = BotPhase.MainMenu,
+                Glucose = new(),
+                BreadUnits = new()
+            };
 
-            var encrypted = EnvCrypto.Encrypt(json);
+            // сразу сохраняем нового в файл
+            _storage.SaveAsync(loaded).Wait();
+        }
 
-            File.WriteAllText(Path.Combine(Dir, $"{id}.json"), encrypted);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("[ERR] Save failed: " + ex.Message);
-        }
+        _users[userId] = loaded;
+        return loaded;
     }
 
-    // -----------------------------
-    // Загрузка
-    // -----------------------------
-    private static UserData LoadFromFile(long id)
+    // ------------------------------
+    // Сохранение пользователя
+    // ------------------------------
+    public static void Save(UserData user)
     {
-        try
-        {
-            var path = Path.Combine(Dir, $"{id}.json");
-            if (!File.Exists(path))
-            {
-                return new UserData
-                {
-                    UserId = id,
-                    Language = "ru",
-                    Phase = BotPhase.MainMenu
-                };
-            }
+        _users[user.UserId] = user;
+        _storage.SaveAsync(user).Wait();
+    }
 
-            var encrypted = File.ReadAllText(path);
-            var json = EnvCrypto.Decrypt(encrypted);
+    // ------------------------------
+    // Принудительно перезагрузить из файла (если надо)
+    // ------------------------------
+    public static UserData Reload(long userId)
+    {
+        var loaded = _storage.LoadAsync(userId).Result;
 
-            var user = JsonSerializer.Deserialize<UserData>(json);
-            if (user != null)
-                return user;
-        }
-        catch (Exception ex)
+        if (loaded != null)
         {
-            Console.WriteLine("[ERR] Load failed: " + ex.Message);
+            _users[userId] = loaded;
+            return loaded;
         }
 
-        // Fallback если файл битый
-        return new UserData
-        {
-            UserId = id,
-            Language = "ru",
-            Phase = BotPhase.MainMenu
-        };
+        return Get(userId);
     }
 }
