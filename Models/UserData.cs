@@ -27,6 +27,8 @@ public class UserData
     // --- школа диабета ---
     public int CurrentLesson { get; set; } = 0;
     public int LessonPage { get; set; } = 0;
+    public int CurrentSub { get; set; } = 0;
+
 
     public string? TempLessonId { get; set; }      // НЕ ДУБЛИРУЕМ
     public string? TempSubId { get; set; }         // НЕ ДУБЛИРУЕМ
@@ -34,9 +36,10 @@ public class UserData
     // --- ГЛЮКОЗА ---
     public List<GlucoseEntry> Glucose { get; set; } = new();
 
-public FoodItem? SelectedFood { get; set; }
+    public FoodItem? SelectedFood { get; set; }
 
 }
+
 
 
 
