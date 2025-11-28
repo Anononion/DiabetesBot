@@ -5,9 +5,9 @@ using Telegram.Bot.Types.ReplyMarkups;
 using Newtonsoft.Json;
 using File = System.IO.File;
 
+using DiabetesBot.Utils;
 using DiabetesBot.Models;
 using DiabetesBot.Services;
-using DiabetesBot.Utils;
 
 namespace DiabetesBot.Modules;
 
@@ -15,7 +15,7 @@ public class DiabetesSchoolModule
 {
     private readonly ITelegramBotClient _bot;
 
-    // lessons[lessonId][subId] = text
+    // lessons[chapter][sublesson] = text
     private Dictionary<string, Dictionary<string, string>> _lessonsRu = new();
     private Dictionary<string, Dictionary<string, string>> _lessonsKz = new();
 
@@ -27,122 +27,107 @@ public class DiabetesSchoolModule
 
     private void Load()
     {
-        var ru = JsonConvert.DeserializeObject<dynamic>(File.ReadAllText("Data/lang_ru.json"));
-        _lessonsRu = ru["ds.lessons"].ToObject<Dictionary<string, Dictionary<string, string>>>();
+        // RU
+        var rawRu = File.ReadAllText("Data/lang_ru.json");
+        dynamic ruJson = JsonConvert.DeserializeObject(rawRu)!;
+        _lessonsRu = ruJson["ds.lessons"].ToObject<Dictionary<string, Dictionary<string, string>>>();
 
-        var kz = JsonConvert.DeserializeObject<dynamic>(File.ReadAllText("Data/lang_kk.json"));
-        _lessonsKz = kz["ds.lessons"].ToObject<Dictionary<string, Dictionary<string, string>>>();
+        // KZ
+        var rawKz = File.ReadAllText("Data/lang_kk.json");
+        dynamic kzJson = JsonConvert.DeserializeObject(rawKz)!;
+        _lessonsKz = kzJson["ds.lessons"].ToObject<Dictionary<string, Dictionary<string, string>>>();
     }
 
-    private Dictionary<string, Dictionary<string, string>> GetBlock(string lang)
+    private Dictionary<string, Dictionary<string, string>> GetLessons(string lang)
         => lang == "kz" ? _lessonsKz : _lessonsRu;
 
     // ============================================================
-    // ГЛАВНОЕ МЕНЮ УРОКОВ
+    // Главное меню школы (1,2,3,4)
     // ============================================================
-    public async Task ShowLessonsAsync(UserData user, long chatId, CancellationToken ct)
+    public async Task ShowMainMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
-        var lessons = GetBlock(user.Language);
-
-        var buttons = new List<KeyboardButton[]>();
         string prefix = user.Language == "kz" ? "Сабақ " : "Урок ";
 
-        foreach (var id in lessons.Keys)
-            buttons.Add(new[] { new KeyboardButton(prefix + id) });
-
-        buttons.Add(new[] { new KeyboardButton(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад") });
+        var kb = new ReplyKeyboardMarkup(new[]
+        {
+            new KeyboardButton[] { $"{prefix}1" },
+            new KeyboardButton[] { $"{prefix}2" },
+            new KeyboardButton[] { $"{prefix}3" },
+            new KeyboardButton[] { $"{prefix}4" },
+            new KeyboardButton[] { user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад" }
+        })
+        { ResizeKeyboard = true };
 
         await _bot.SendMessage(chatId,
-            user.Language == "kz" ? "Сабақты таңдаңыз:" : "Выберите урок:",
-            replyMarkup: new ReplyKeyboardMarkup(buttons) { ResizeKeyboard = true },
+            user.Language == "kz" ? "Диабет мектебі:" : "Школа диабета:",
+            replyMarkup: kb,
             cancellationToken: ct);
     }
 
     // ============================================================
-    // МЕНЮ ПОДУРОКОВ 1.1 / 1.2 / 1.3
+    // Показать уроки внутри главы
     // ============================================================
-    public async Task ShowSubLessonsAsync(UserData user, long chatId, int lessonId, CancellationToken ct)
+    public async Task ShowLessonsAsync(UserData user, long chatId, int lesson, CancellationToken ct)
     {
-        var lessons = GetBlock(user.Language);
+        var lessons = GetLessons(user.Language);
 
-        if (!lessons.ContainsKey(lessonId.ToString()))
+        if (!lessons.ContainsKey(lesson.ToString()))
         {
-            await _bot.SendMessage(chatId, "Ошибка данных", cancellationToken: ct);
+            await _bot.SendMessage(chatId, "Ошибка данных урока.", cancellationToken: ct);
             return;
         }
 
-        user.CurrentLesson = lessonId;
-
-        var subIds = lessons[lessonId.ToString()].Keys;
-
-        var buttons = subIds
-            .Select(s => new[] { new KeyboardButton($"{lessonId}.{s}") })
+        var buttons = lessons[lesson.ToString()].Keys
+            .Select(k => new[] { new KeyboardButton(k) })
             .ToList();
 
         buttons.Add(new[] { new KeyboardButton(user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад") });
 
         await _bot.SendMessage(chatId,
-            $"{(user.Language == "kz" ? "Сабақ" : "Урок")} {lessonId}",
+            (user.Language == "kz" ? "Сабақ " : "Урок ") + lesson,
             replyMarkup: new ReplyKeyboardMarkup(buttons) { ResizeKeyboard = true },
             cancellationToken: ct);
     }
 
     // ============================================================
-    // ПОКАЗ СТРАНИЦЫ ПОДУРОКА
+    // Показать содержание подурока
     // ============================================================
-    public async Task ShowPageAsync(UserData user, long chatId, int lessonId, int subId, CancellationToken ct)
+    public async Task ShowLessonTextAsync(UserData user, long chatId, string lessonId, CancellationToken ct)
     {
-        var lessons = GetBlock(user.Language);
+        var lessons = GetLessons(user.Language);
 
-        string l = lessonId.ToString();
-        string s = subId.ToString();
+        string chapter = lessonId.Split('.')[0];
 
-        if (!lessons.ContainsKey(l) || !lessons[l].ContainsKey(s))
+        if (!lessons.ContainsKey(chapter) || !lessons[chapter].ContainsKey(lessonId))
         {
             await _bot.SendMessage(chatId, "Ошибка данных.", cancellationToken: ct);
             return;
         }
 
-        user.CurrentLesson = lessonId;
-        user.CurrentSub = subId;
-
-        string text = lessons[l][s];
+        string text = lessons[chapter][lessonId];
 
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[]
-            {
-                user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад",
-                user.Language == "kz" ? "Келесі" : "Далее"
-            }
+            new KeyboardButton[] { user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад" }
         })
         { ResizeKeyboard = true };
 
         await _bot.SendMessage(chatId, text, replyMarkup: kb, cancellationToken: ct);
     }
 
+
     // ============================================================
-    // КНОПКА "ДАЛЕЕ"
+    // CALLBACK HANDLER (старый стиль)
     // ============================================================
-    public async Task ShowNextPageAsync(UserData user, long chatId, CancellationToken ct)
+    public async Task HandleCallbackAsync(UserData user, CallbackQuery query, CancellationToken ct)
     {
-        int lessonId = user.CurrentLesson;
-        int subId = user.CurrentSub + 1;
+        string data = query.Data ?? "";
 
-        var lessons = GetBlock(user.Language);
-
-        if (!lessons.ContainsKey(lessonId.ToString())
-            || !lessons[lessonId.ToString()].ContainsKey(subId.ToString()))
-        {
-            await _bot.SendMessage(chatId,
-                user.Language == "kz" ? "Бұл сабақ аяқталды." : "Этот урок окончен.",
-                cancellationToken: ct);
-
-            await ShowLessonsAsync(user, chatId, ct);
-            user.Phase = BotPhase.DiabetesSchool;
+        if (!data.StartsWith("DS_LESSON|"))
             return;
-        }
 
-        await ShowPageAsync(user, chatId, lessonId, subId, ct);
+        string lessonId = data.Split('|')[1];
+
+        await ShowLessonTextAsync(user, query.Message!.Chat.Id, lessonId, ct);
     }
 }
