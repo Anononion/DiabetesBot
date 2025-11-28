@@ -89,6 +89,8 @@ public class GlucoseModule
         user.PendingGlucoseValue = val;
         user.Phase = BotPhase.Glucose_ValueInputType;
 
+        StateStore.Save(user);
+
         await AskTypeAsync(user, chatId, ct);
     }
 
@@ -129,6 +131,7 @@ public class GlucoseModule
         if (text.Contains("Отмена") || text.Contains("Болдырмау"))
         {
             user.Phase = BotPhase.Glucose;
+            StateStore.Save(user);
             await ShowMenuAsync(user, chatId, ct);
             return;
         }
@@ -157,6 +160,8 @@ public class GlucoseModule
             Type = type,
             Time = DateTime.UtcNow
         });
+
+        StateStore.Save(user);
 
         string status = Interpret(value, type, user.Language);
         string advice = Advice(value, type, user.Language);
@@ -295,4 +300,5 @@ public class GlucoseModule
 }
 
 }
+
 
