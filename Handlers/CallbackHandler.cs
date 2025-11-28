@@ -83,12 +83,7 @@ public class CallbackHandler
             return;
         }
 
-        if (data.StartsWith("GLU_TYPE"))
-        {
-            await _glucose.HandleCallbackAsync(user, cb, ct);
-            return;
-        }
-
+    
         // сюда позже можно добавить GLU_ / BU_ и т.п.
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
@@ -103,6 +98,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
