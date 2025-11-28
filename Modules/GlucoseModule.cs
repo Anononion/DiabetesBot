@@ -72,6 +72,15 @@ public class GlucoseModule
     {
         user.Phase = BotPhase.Glucose_ValueInputType;
 
+        // 🔥 1) Удаляем ReplyKeyboardMarkup, иначе callback НЕ сработает
+        await _bot.SendMessage(
+            chatId,
+            user.Language == "kz" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:",
+            replyMarkup: new ReplyKeyboardRemove(),
+            cancellationToken: ct
+        );
+
+        // 🔥 2) Inline-клавиатура — теперь Telegram точно пошлёт callback_query
         var kb = new InlineKeyboardMarkup(new[]
         {
             new[]
@@ -101,13 +110,15 @@ public class GlucoseModule
             }
         });
 
+        // 🔥 3) Показываем inline-кнопки
         await _bot.SendMessage(
             chatId,
-            user.Language == "kz" ? "Өлшеу түрін таңдаңыз:" : "Выберите тип измерения:",
+            user.Language == "kz" ? "Өлшеу түрін таңданыз 👇" : "Выберите тип измерения 👇",
             replyMarkup: kb,
             cancellationToken: ct
         );
     }
+
 
     // =============================================
     // Обработка callback — выбор типа
@@ -301,3 +312,4 @@ public class GlucoseModule
             : "Значение в норме.";
     }
 }
+
