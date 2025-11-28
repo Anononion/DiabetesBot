@@ -28,10 +28,16 @@ public class CallbackHandler
         _school = school;
     }
 
-    public Task HandleCallbackAsync(CallbackQuery cb, CancellationToken ct)
+    public async Task HandleCallbackAsync(CallbackQuery cb, CancellationToken ct)
     {
-        return HandleAsync(cb, ct);
+        var user = UserState.Get(cb.From.Id);   // ← ОБЯЗАТЕЛЬНО
+
+        if (cb.Data == null)
+            return;
+
+        BotLogger.Info($"[CB] {cb.Data}");
     }
+
 
     public async Task HandleAsync(CallbackQuery cb, CancellationToken ct)
     {
@@ -89,6 +95,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
