@@ -49,6 +49,13 @@ public class CallbackHandler
             return;
         }
 
+        if (query.Data!.StartsWith("DS_LESSON"))
+        {
+            await _school.HandleCallbackAsync(user, query, ct);
+            return;
+        }
+
+
         // Диабет-школа: Подурок
         if (data.StartsWith("school_sub:"))
         {
@@ -81,6 +88,7 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
 
