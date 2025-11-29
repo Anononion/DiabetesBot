@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DiabetesBot.Models;
+using DiabetesBot.Utils; // <-- для EnvCrypto !!!
 
 namespace DiabetesBot.Services;
 
@@ -25,7 +26,7 @@ public class JsonStorageService
     }
 
     // =====================================================================
-    //                        LOAD FOODS & CATEGORIES
+    // LOAD FOODS / CATEGORIES
     // =====================================================================
 
     public List<FoodItem> LoadFoodItems()
@@ -38,7 +39,10 @@ public class JsonStorageService
         if (!File.Exists(path))
             throw new FileNotFoundException("foods.json NOT FOUND: " + path);
 
-        return JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(path), _opts)
+        string raw = File.ReadAllText(path);
+
+        // продукты НЕ шифровались
+        return JsonSerializer.Deserialize<List<FoodItem>>(raw, _opts)
                ?? new List<FoodItem>();
     }
 
@@ -52,12 +56,15 @@ public class JsonStorageService
         if (!File.Exists(path))
             throw new FileNotFoundException("food_categories.json NOT FOUND: " + path);
 
-        return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path), _opts)
+        string raw = File.ReadAllText(path);
+
+        // категории тоже никогда не шифровались
+        return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(raw, _opts)
                ?? new Dictionary<string, List<string>>();
     }
 
     // =====================================================================
-    //                        LOAD / SAVE USER FILES
+    // LOAD / SAVE USER (С ШИФРОВКОЙ!)
     // =====================================================================
 
     public UserData LoadUser(long userId)
@@ -67,14 +74,26 @@ public class JsonStorageService
         if (!File.Exists(path))
             return new UserData { UserId = userId };
 
-        return JsonSerializer.Deserialize<UserData>(File.ReadAllText(path), _opts)
+        string encrypted = File.ReadAllText(path);
+
+        // 🔥 пробуем расшифровать
+        string? decrypted = EnvCrypto.TryDecrypt(encrypted);
+
+        string json = decrypted ?? encrypted; // если файл был НЕ зашифрован
+
+        return JsonSerializer.Deserialize<UserData>(json, _opts)
                ?? new UserData { UserId = userId };
     }
 
     public void SaveUser(UserData user)
     {
         string path = Path.Combine(_usersDir, $"{user.UserId}.json");
+
         string json = JsonSerializer.Serialize(user, _opts);
-        File.WriteAllText(path, json);
+
+        // 🔥 ШИФРУЕМ КАК В СТАРОЙ ВЕРСИИ
+        string encrypted = EnvCrypto.Encrypt(json);
+
+        File.WriteAllText(path, encrypted);
     }
 }
