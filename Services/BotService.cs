@@ -30,7 +30,7 @@ public class BotService
         _bot = new TelegramBotClient(token);
 
         // === создаём сервис файлового хранилища ===
-        _storage = new JsonStorageService("Data/users");
+        _storage = new JsonStorageService();
 
         // === создаём модули ===
         _glucose = new GlucoseModule(_bot);
@@ -90,3 +90,4 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
+
