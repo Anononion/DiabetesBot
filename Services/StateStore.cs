@@ -67,7 +67,7 @@ public static class StateStore
 {
     try
     {
-        JsonStorageService.SaveUser(user);
+        JsonStorageService.SaveUserData(id, _users[id]);
     }
     catch (Exception ex)
     {
