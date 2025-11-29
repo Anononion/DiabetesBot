@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DiabetesBot.Models;
 using DiabetesBot.Utils.Crypto;
+using DiabetesBot.Utils.Logging; // ← твой логгер
 
 namespace DiabetesBot.Services;
 
@@ -25,10 +26,9 @@ public class JsonStorageService
         Directory.CreateDirectory(_usersDir);
     }
 
-    // =====================================================================
-    // LOAD FOODS / CATEGORIES
-    // =====================================================================
-
+    // ================================================================
+    // FOODS
+    // ================================================================
     public List<FoodItem> LoadFoodItems()
     {
         string path1 = Path.Combine(_usersDir, "foods.json");
@@ -39,10 +39,7 @@ public class JsonStorageService
         if (!File.Exists(path))
             throw new FileNotFoundException("foods.json NOT FOUND: " + path);
 
-        string raw = File.ReadAllText(path);
-
-        // продукты НЕ шифровались
-        return JsonSerializer.Deserialize<List<FoodItem>>(raw, _opts)
+        return JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(path), _opts)
                ?? new List<FoodItem>();
     }
 
@@ -56,18 +53,19 @@ public class JsonStorageService
         if (!File.Exists(path))
             throw new FileNotFoundException("food_categories.json NOT FOUND: " + path);
 
-        string raw = File.ReadAllText(path);
-
-        // категории тоже никогда не шифровались
-        return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(raw, _opts)
+        return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path), _opts)
                ?? new Dictionary<string, List<string>>();
     }
 
-    // =====================================================================
-    // LOAD / SAVE USER (С ШИФРОВКОЙ!)
-    // =====================================================================
+    // ================================================================
+    // USER STORAGE (encrypted)
+    // ================================================================
+    private string GetUserPath(long userId)
+    {
+        return Path.Combine(_usersDir, $"{userId}.json");
+    }
 
-   public UserData? LoadUser(long userId)
+    public UserData? LoadUser(long userId)
     {
         var path = GetUserPath(userId);
 
@@ -81,13 +79,12 @@ public class JsonStorageService
             string json = EnvCrypto.Decrypt(encrypted);
             return JsonSerializer.Deserialize<UserData>(json);
         }
-        catch
+        catch (Exception ex)
         {
-            BotLogger.Error($"[LOAD] Cannot decrypt user {userId}, file corrupted.");
-            return null; // создадим новый UserData в StateStore
+            BotLogger.Error($"[LOAD] Cannot decrypt user {userId}: {ex.Message}");
+            return null;
         }
     }
-
 
     public void SaveUser(UserData user)
     {
@@ -103,5 +100,3 @@ public class JsonStorageService
         File.WriteAllText(path, encrypted);
     }
 }
-
-
