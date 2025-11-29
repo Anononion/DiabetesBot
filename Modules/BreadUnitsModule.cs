@@ -11,23 +11,22 @@ namespace DiabetesBot.Modules;
 public class BreadUnitsModule
 {
     private readonly ITelegramBotClient _bot;
+    private readonly JsonStorageService _storage;
     private readonly Dictionary<string, List<FoodItem>> _foodsByCategory;
 
-    public BreadUnitsModule(ITelegramBotClient bot)
+    public BreadUnitsModule(ITelegramBotClient bot, JsonStorageService storage)
     {
         _bot = bot;
+        _storage = storage;
 
-        // Загружаем продукты из JSON
-        var foods = JsonStorageService.LoadFoodItems() ?? new List<FoodItem>();
+        // Загружаем продукты
+        var foods = _storage.LoadFoodItems() ?? new List<FoodItem>();
 
         _foodsByCategory = foods
             .GroupBy(f => f.Category)
             .ToDictionary(g => g.Key, g => g.ToList());
     }
 
-    // -------------------------------------------------------------
-    // Главное меню ХЕ
-    // -------------------------------------------------------------
     public async Task ShowMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
         var kb = new ReplyKeyboardMarkup(new[]
@@ -36,9 +35,7 @@ public class BreadUnitsModule
             new KeyboardButton[] { user.Language == "kz" ? "Тарих" : "История" },
             new KeyboardButton[] { user.Language == "kz" ? "Артқа" : "Назад" }
         })
-        {
-            ResizeKeyboard = true
-        };
+        { ResizeKeyboard = true };
 
         await _bot.SendMessage(chatId,
             user.Language == "kz" ? "Нан бірліктері мәзірі:" : "Меню хлебных единиц:",
@@ -46,9 +43,6 @@ public class BreadUnitsModule
             cancellationToken: ct);
     }
 
-    // -------------------------------------------------------------
-    // Обработка текстовых команд
-    // -------------------------------------------------------------
     public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
         if (text.Contains("Назад") || text.Contains("Артқа"))
@@ -57,7 +51,7 @@ public class BreadUnitsModule
             return;
         }
 
-        if (text.Contains("Категори") || text.Contains("Санат"))
+        if (text.Contains("Категор") || text.Contains("Санат"))
         {
             await SendCategoriesAsync(user, chatId, ct);
             return;
@@ -72,9 +66,6 @@ public class BreadUnitsModule
         await ShowMenuAsync(user, chatId, ct);
     }
 
-    // -------------------------------------------------------------
-    // Категории продуктов (inline кнопки)
-    // -------------------------------------------------------------
     private async Task SendCategoriesAsync(UserData user, long chatId, CancellationToken ct)
     {
         var rows = _foodsByCategory.Keys
@@ -89,15 +80,11 @@ public class BreadUnitsModule
             cancellationToken: ct);
     }
 
-    // -------------------------------------------------------------
-    // Обработка callback-кнопок XE
-    // -------------------------------------------------------------
     public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
     {
         if (cb.Data == null)
             return;
 
-        // Категория
         if (cb.Data.StartsWith("XE_CAT:"))
         {
             string category = cb.Data.Replace("XE_CAT:", "");
@@ -105,7 +92,6 @@ public class BreadUnitsModule
             return;
         }
 
-        // Выбор продукта
         if (cb.Data.StartsWith("XE_PROD:"))
         {
             string id = cb.Data.Replace("XE_PROD:", "");
@@ -120,9 +106,6 @@ public class BreadUnitsModule
         }
     }
 
-    // -------------------------------------------------------------
-    // Список продуктов категории
-    // -------------------------------------------------------------
     private async Task ShowProductsAsync(UserData user, long chatId, string category, CancellationToken ct)
     {
         if (!_foodsByCategory.TryGetValue(category, out var list))
@@ -133,8 +116,7 @@ public class BreadUnitsModule
 
         var kb = new InlineKeyboardMarkup(
             list.Select(f =>
-                new[]
-                {
+                new[] {
                     InlineKeyboardButton.WithCallbackData(
                         user.Language == "kz" ? f.NameKk : f.NameRu,
                         $"XE_PROD:{f.Id}")
@@ -147,9 +129,6 @@ public class BreadUnitsModule
             cancellationToken: ct);
     }
 
-    // -------------------------------------------------------------
-    // Ввод граммов
-    // -------------------------------------------------------------
     public async Task HandleGramsAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
         if (user.TempProductId == null)
@@ -168,8 +147,8 @@ public class BreadUnitsModule
             return;
         }
 
-        var food = JsonStorageService.LoadFoodItems()!
-            .FirstOrDefault(f => f.Id == user.TempProductId);
+        var foods = _storage.LoadFoodItems() ?? new List<FoodItem>();
+        var food = foods.FirstOrDefault(f => f.Id == user.TempProductId);
 
         if (food == null)
         {
@@ -202,9 +181,6 @@ public class BreadUnitsModule
         await ShowMenuAsync(user, chatId, ct);
     }
 
-    // -------------------------------------------------------------
-    // История
-    // -------------------------------------------------------------
     private async Task SendHistoryAsync(UserData user, long chatId, CancellationToken ct)
     {
         if (user.BreadUnits.Count == 0)
