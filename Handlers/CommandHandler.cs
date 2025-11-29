@@ -12,7 +12,7 @@ public class CommandHandler
     private readonly ITelegramBotClient _bot;
 
     private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _breadUnits;
+    private readonly BreadUnitsModule _xe;
     private readonly DiabetesSchoolModule _school;
 
     public CommandHandler(
@@ -23,7 +23,7 @@ public class CommandHandler
     {
         _bot = bot;
         _glucose = glucose;
-        _breadUnits = breadUnits;
+        _xe = xe;
         _school = school;
     }
 
@@ -262,6 +262,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
