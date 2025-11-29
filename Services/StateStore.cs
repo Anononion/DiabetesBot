@@ -63,4 +63,16 @@ public static class StateStore
 
         return Get(userId);
     }
+    public static void SaveToFile(UserData user)
+{
+    try
+    {
+        JsonStorageService.SaveUser(user);
+    }
+    catch (Exception ex)
+    {
+        BotLogger.Error($"[StateStore] SaveToFile error: {ex}");
+    }
+}
+
 }
