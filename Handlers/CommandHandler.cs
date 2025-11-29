@@ -23,7 +23,7 @@ public class CommandHandler
     {
         _bot = bot;
         _glucose = glucose;
-        _breadUnits = new BreadUnitsModule(bot);
+        _breadUnits = breadUnits;
         _school = school;
     }
 
@@ -262,6 +262,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
