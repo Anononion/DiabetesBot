@@ -12,7 +12,7 @@ public class CommandHandler
     private readonly ITelegramBotClient _bot;
 
     private readonly GlucoseModule _glucose;
-    private readonly BreadUnitsModule _xe;
+    private readonly BreadUnitsModule _breadUnits;
     private readonly DiabetesSchoolModule _school;
 
     public CommandHandler(
@@ -23,7 +23,7 @@ public class CommandHandler
     {
         _bot = bot;
         _glucose = glucose;
-        _xe = xe;
+        _breadUnits = new BreadUnitsModule(bot);
         _school = school;
     }
 
@@ -93,11 +93,11 @@ public class CommandHandler
             // ХЕ
             // ============================
             case BotPhase.BreadUnits:
-                await _xe.HandleTextAsync(user, chatId, text, ct);
+                await _breadUnits.HandleTextAsync(user, chatId, text, ct);
                 break;
 
             case BotPhase.BreadUnits_EnterGrams:
-                await _xe.HandleGramsAsync(user, chatId, text, ct);
+                await _breadUnits.HandleGramsAsync(user, chatId, text, ct);
                 break;
 
 
@@ -262,6 +262,7 @@ public class CommandHandler
             cancellationToken: ct);
     }
 }
+
 
 
 
