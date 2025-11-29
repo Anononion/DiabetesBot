@@ -1,6 +1,6 @@
 using System.Text.Json;
 using DiabetesBot.Models;
-using DiabetesBot.Utils; // <-- для EnvCrypto !!!
+using DiabetesBot.Utils.Crypto;
 
 namespace DiabetesBot.Services;
 
@@ -97,3 +97,4 @@ public class JsonStorageService
         File.WriteAllText(path, encrypted);
     }
 }
+
