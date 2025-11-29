@@ -4,6 +4,7 @@ using DiabetesBot.Utils;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using DiabetesBot.Services;
 
 namespace DiabetesBot.Modules;
 
@@ -235,3 +236,4 @@ public class BreadUnitsModule
         await _bot.SendMessage(chatId, msg, cancellationToken: ct);
     }
 }
+
