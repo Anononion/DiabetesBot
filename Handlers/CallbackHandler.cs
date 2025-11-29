@@ -107,6 +107,13 @@ public class CallbackHandler
             return;
         }
 
+        if (data.StartsWith("XE_CAT") || data.StartsWith("XE_PROD"))
+        {
+        await _xe.HandleCallbackAsync(user, cb, ct);
+        return;
+        }
+
+
         // сюда позже можно добавить другие префиксы
         BotLogger.Warn($"[CB] Unknown callback: {data}");
     }
@@ -119,3 +126,4 @@ public class CallbackHandler
             Text = text
         };
 }
+
