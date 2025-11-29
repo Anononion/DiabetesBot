@@ -86,18 +86,6 @@ public class CallbackHandler
         // ============================
         // ХЛЕБНЫЕ ЕДИНИЦЫ (XE)
         // ============================
-        if (data.StartsWith("BU_CAT"))
-        {
-            await _xe.HandleCallbackAsync(user, cb, ct);
-            return;
-        }
-
-        if (data.StartsWith("BU_ITEM"))
-        {
-            await _xe.HandleCallbackAsync(user, cb, ct);
-            return;
-        }
-
         if (data.StartsWith("XE_CAT") || data.StartsWith("XE_PROD"))
         {
         await _xe.HandleCallbackAsync(user, cb, ct);
@@ -117,5 +105,6 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
 
