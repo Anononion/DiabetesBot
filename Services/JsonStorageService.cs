@@ -1,7 +1,7 @@
 using System.Text.Json;
 using DiabetesBot.Models;
 using DiabetesBot.Utils.Crypto;
-using DiabetesBot.Utils.Logging; // ← твой логгер
+using DiabetesBot.Utils; // ← твой логгер
 
 namespace DiabetesBot.Services;
 
@@ -100,3 +100,4 @@ public class JsonStorageService
         File.WriteAllText(path, encrypted);
     }
 }
+
