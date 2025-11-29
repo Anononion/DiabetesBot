@@ -21,27 +21,28 @@ public class BotService
     private readonly BreadUnitsModule _bread;
     private readonly DiabetesSchoolModule _school;
 
+    private readonly JsonStorageService _storage;
+
     public BotService(string token)
     {
         BotLogger.Info("[BOT] Initializing BotService…");
 
         _bot = new TelegramBotClient(token);
 
-        // === Создаём модули ===
+        // === создаём сервис файлового хранилища ===
+        _storage = new JsonStorageService("Data/users");
+
+        // === создаём модули ===
         _glucose = new GlucoseModule(_bot);
-        _bread = new BreadUnitsModule(_bot);
+        _bread = new BreadUnitsModule(_bot, _storage);
         _school = new DiabetesSchoolModule(_bot);
 
-        // === Создаём хэндлеры ===
+        // === создаём хэндлеры ===
         _cmd = new CommandHandler(_bot, _glucose, _bread, _school);
         _cb = new CallbackHandler(_bot, _cmd, _glucose, _bread, _school);
 
         BotLogger.Info("[BOT] BotService initialized successfully");
     }
-
-    // ============================================================
-    // MAIN UPDATE ENTRY
-    // ============================================================
 
     public async Task HandleWebhookAsync(Update update)
     {
@@ -49,32 +50,28 @@ public class BotService
         {
             BotLogger.Info($"[BOT] Update received: type={update.Type}");
             BotLogger.Info("[DEBUG] RAW UPDATE JSON: " +
-            JsonSerializer.Serialize(
-                update,
-                new JsonSerializerOptions {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.Never
-            }    
-        )
-    );
+                JsonSerializer.Serialize(
+                    update,
+                    new JsonSerializerOptions {
+                        WriteIndented = true,
+                        DefaultIgnoreCondition = JsonIgnoreCondition.Never
+                    }
+                )
+            );
 
-            // 1. CALLBACKS — по наличию, а НЕ по type
             if (update.CallbackQuery != null)
             {
                 BotLogger.Info("[BOT] Update received: type=CallbackQuery");
-                BotLogger.Info("[DEBUG] RAW CALLBACK: " + JsonSerializer.Serialize(update));
                 await _cb.HandleCallbackAsync(update.CallbackQuery, CancellationToken.None);
                 return;
             }
 
-            // 2. Сообщения
             if (update.Message != null)
             {
                 await _cmd.HandleMessageAsync(update.Message, CancellationToken.None);
                 return;
             }
 
-            // 3. Логи если неизвестно что пришло
             BotLogger.Warn("[BOT] Unknown update type → ignore");
         }
         catch (Exception ex)
@@ -82,12 +79,6 @@ public class BotService
             BotLogger.Error("[BOT] ERROR during update handling", ex);
         }
     }
-
-
-
-    // ============================================================
-    // WEBHOOK MANAGEMENT
-    // ============================================================
 
     public async Task SetWebhookAsync(string url)
     {
@@ -99,12 +90,3 @@ public class BotService
         BotLogger.Info("[BOT] Webhook installed successfully");
     }
 }
-
-
-
-
-
-
-
-
-
