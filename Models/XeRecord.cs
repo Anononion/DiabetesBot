@@ -1,3 +1,5 @@
+using DiabetesBot.Services;
+
 namespace DiabetesBot.Models
 {
     public class XeRecord
@@ -28,3 +30,4 @@ namespace DiabetesBot.Models
         public DateTime Time { get; set; }
     }
 }
+
