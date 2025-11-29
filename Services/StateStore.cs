@@ -1,70 +1,75 @@
-using DiabetesBot.Services;
-using System.Collections.Concurrent;
 using DiabetesBot.Models;
-using DiabetesBot.Utils;   // ← ты забыл точку с запятой
+using DiabetesBot.Services;
 
-namespace DiabetesBot.Services
+namespace DiabetesBot.Services;
+
+public static class StateStore
 {
-    public static class StateStore
+    private static readonly Dictionary<long, UserData> _cache = new();
+    private static JsonStorageService _storage = new();
+
+    /// <summary>
+    /// Инициализация (если понадобится DI — можно передать storage снаружи)
+    /// </summary>
+    public static void Init(JsonStorageService storage)
     {
-        private static readonly ConcurrentDictionary<long, UserData> _users = new();
-        private static readonly JsonStorageService _storage = new JsonStorageService();
+        _storage = storage;
+    }
 
-        // ------------------------------
-        // Получение пользователя
-        // ------------------------------
-        public static UserData Get(long userId)
+    /// <summary>
+    /// Получить пользователя из памяти или файла
+    /// </summary>
+    public static UserData Get(long userId)
+    {
+        // В кэше есть — отдаем
+        if (_cache.TryGetValue(userId, out var u))
+            return u;
+
+        // Читаем из файла
+        var loaded = _storage.LoadUserData(userId);
+
+        if (loaded != null)
         {
-            // Если уже есть в оперативке
-            if (_users.TryGetValue(userId, out var cached))
-                return cached;
-
-            // Пробуем загрузить из файла
-            var loaded = _storage.LoadAsync(userId).Result;
-
-            if (loaded == null)
-            {
-                loaded = new UserData
-                {
-                    UserId = userId,
-                    Language = "ru",
-                    Phase = BotPhase.MainMenu,
-                    Glucose = new(),
-                    BreadUnits = new(),
-                    XeHistory = new(),
-                    FoodDiary = new()
-                };
-
-                _storage.SaveAsync(loaded).Wait();
-            }
-
-            _users[userId] = loaded;
+            _cache[userId] = loaded;
             return loaded;
         }
 
-        // ------------------------------
-        // Сохранение пользователя
-        // ------------------------------
-        public static void Save(UserData user)
+        // Создаем нового
+        var user = new UserData
         {
-            _users[user.UserId] = user;
-            _storage.SaveAsync(user).Wait();
+            UserId = userId,
+            Language = "ru",
+            Phase = BotPhase.MainMenu
+        };
+
+        _cache[userId] = user;
+        _storage.SaveUserData(user);
+
+        return user;
+    }
+
+    /// <summary>
+    /// Сохранить изменения пользователя
+    /// </summary>
+    public static void Save(UserData user)
+    {
+        _cache[user.UserId] = user;
+        _storage.SaveUserData(user);
+    }
+
+    /// <summary>
+    /// Принудительная перезагрузка пользователя из файла
+    /// </summary>
+    public static UserData Reload(long userId)
+    {
+        var loaded = _storage.LoadUserData(userId);
+
+        if (loaded != null)
+        {
+            _cache[userId] = loaded;
+            return loaded;
         }
 
-        // ------------------------------
-        // Принудительная перезагрузка
-        // ------------------------------
-        public static UserData Reload(long userId)
-        {
-            var loaded = _storage.LoadAsync(userId).Result;
-
-            if (loaded != null)
-            {
-                _users[userId] = loaded;
-                return loaded;
-            }
-
-            return Get(userId);
-        }
+        return Get(userId);
     }
 }
