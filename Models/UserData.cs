@@ -41,8 +41,9 @@ public class UserData
     public double? TempGlucoseValue { get; set; }
     // временное значение, пока пользователь выбирает тип
     public double? PendingGlucoseValue { get; set; }
-
+    public string? TempProductId { get; set; }
 }
+
 
 
 
