@@ -67,34 +67,41 @@ public class JsonStorageService
     // LOAD / SAVE USER (С ШИФРОВКОЙ!)
     // =====================================================================
 
-    public UserData LoadUser(long userId)
+   public UserData? LoadUser(long userId)
     {
-        string path = Path.Combine(_usersDir, $"{userId}.json");
+        var path = GetUserPath(userId);
 
         if (!File.Exists(path))
-            return new UserData { UserId = userId };
+            return null;
 
         string encrypted = File.ReadAllText(path);
 
-        // 🔥 пробуем расшифровать
-        string? decrypted = EnvCrypto.TryDecrypt(encrypted);
-
-        string json = decrypted ?? encrypted; // если файл был НЕ зашифрован
-
-        return JsonSerializer.Deserialize<UserData>(json, _opts)
-               ?? new UserData { UserId = userId };
+        try
+        {
+            string json = EnvCrypto.Decrypt(encrypted);
+            return JsonSerializer.Deserialize<UserData>(json);
+        }
+        catch
+        {
+            BotLogger.Error($"[LOAD] Cannot decrypt user {userId}, file corrupted.");
+            return null; // создадим новый UserData в StateStore
+        }
     }
+
 
     public void SaveUser(UserData user)
     {
-        string path = Path.Combine(_usersDir, $"{user.UserId}.json");
+        var path = GetUserPath(user.UserId);
 
-        string json = JsonSerializer.Serialize(user, _opts);
+        string json = JsonSerializer.Serialize(user, new JsonSerializerOptions
+        {
+            WriteIndented = false
+        });
 
-        // 🔥 ШИФРУЕМ КАК В СТАРОЙ ВЕРСИИ
         string encrypted = EnvCrypto.Encrypt(json);
 
         File.WriteAllText(path, encrypted);
     }
 }
+
 
