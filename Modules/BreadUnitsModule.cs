@@ -1,69 +1,54 @@
-using Telegram.Bot;
-using Telegram.Bot.Types.ReplyMarkups;
-
-using Newtonsoft.Json;
-using File = System.IO.File;
-
-using DiabetesBot.Utils;
+using System.Globalization;
 using DiabetesBot.Models;
-using DiabetesBot.Services;
+using DiabetesBot.Utils;
+using Telegram.Bot;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace DiabetesBot.Modules;
 
 public class BreadUnitsModule
 {
     private readonly ITelegramBotClient _bot;
-
-    // category → items
-    private Dictionary<string, List<FoodItem>> _foods = new();
+    private readonly Dictionary<string, List<FoodItem>> _foodsByCategory;
+    private readonly UserData _tempState = new(); // используется только как временная корзина
 
     public BreadUnitsModule(ITelegramBotClient bot)
     {
         _bot = bot;
-        Load();
-    }
 
-    // ====================================================================
-    // ЗАГРУЗКА JSON
-    // ====================================================================
-    private void Load()
-    {
-        string foodsPath = Path.Combine("Data", "foods.json");
+        // Загружаем продукты
+        var foods = JsonStorageService.LoadFoods() ?? new List<FoodItem>();
 
-        var items = JsonConvert.DeserializeObject<List<FoodItem>>(File.ReadAllText(foodsPath));
-        if (items == null)
-        {
-            _foods = new Dictionary<string, List<FoodItem>>();
-            return;
-        }
-
-        // группируем по Category (как у тебя в JSON)
-        _foods = items
+        _foodsByCategory = foods
             .GroupBy(f => f.Category)
             .ToDictionary(g => g.Key, g => g.ToList());
     }
 
-    // ====================================================================
-    // ГЛАВНОЕ МЕНЮ
-    // ====================================================================
+    // ------------------------------------------------------------------
+    // Главное меню блока ХЕ
+    // ------------------------------------------------------------------
     public async Task ShowMenuAsync(UserData user, long chatId, CancellationToken ct)
     {
         var kb = new ReplyKeyboardMarkup(new[]
         {
-            new KeyboardButton[] { user.Language == "kz" ? "📂 Санаттар" : "📂 Категории" },
-            new KeyboardButton[] { user.Language == "kz" ? "⬅️ Артқа" : "⬅️ Назад" }
+            new KeyboardButton[] { user.Language == "kz" ? "Санаттар" : "Категории" },
+            new KeyboardButton[] { user.Language == "kz" ? "Тарих" : "История" },
+            new KeyboardButton[] { user.Language == "kz" ? "Артқа" : "Назад" }
         })
         {
             ResizeKeyboard = true
         };
 
         await _bot.SendMessage(chatId,
-            user.Language == "kz" ? "ХЕ мәзірі:" : "Меню хлебных единиц:",
+            user.Language == "kz" ? "Нан бірліктері мәзірі:" : "Меню хлебных единиц:",
             replyMarkup: kb,
             cancellationToken: ct);
     }
 
-    // ====================================================================
+    // ------------------------------------------------------------------
+    // Обработка текста (когда user.Phase == BreadUnits)
+    // ------------------------------------------------------------------
     public async Task HandleTextAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
         if (text.Contains("Назад") || text.Contains("Артқа"))
@@ -74,123 +59,179 @@ public class BreadUnitsModule
 
         if (text.Contains("Категории") || text.Contains("Санаттар"))
         {
-            await ShowCategoriesAsync(chatId, ct);
+            await SendCategoriesAsync(user, chatId, ct);
+            return;
+        }
+
+        if (text.Contains("История") || text.Contains("Тарих"))
+        {
+            await SendHistoryAsync(user, chatId, ct);
             return;
         }
 
         await ShowMenuAsync(user, chatId, ct);
     }
 
-    // ====================================================================
-    // ПОКАЗАТЬ КАТЕГОРИИ
-    // ====================================================================
-    public async Task ShowCategoriesAsync(long chatId, CancellationToken ct)
+    // ------------------------------------------------------------------
+    // Показ категорий с inline-кнопками
+    // ------------------------------------------------------------------
+    private async Task SendCategoriesAsync(UserData user, long chatId, CancellationToken ct)
     {
-        var ik = new InlineKeyboardMarkup(
-            _foods.Keys.Select(cat =>
-                InlineKeyboardButton.WithCallbackData(cat, $"xe_cat:{cat}")
-            ).ToArray()
-        );
+        var rows = _foodsByCategory.Keys
+            .Select(c =>
+                InlineKeyboardButton.WithCallbackData(
+                    user.Language == "kz" ? c : c,
+                    $"XE_CAT:{c}"))
+            .Chunk(2)
+            .Select(r => r.ToArray())
+            .ToArray();
+
+        var kb = new InlineKeyboardMarkup(rows);
 
         await _bot.SendMessage(chatId,
-            "Выберите категорию:",
-            replyMarkup: ik,
+            user.Language == "kz" ? "Санатты таңдаңыз:" : "Выберите категорию:",
+            replyMarkup: kb,
             cancellationToken: ct);
     }
 
-    // ====================================================================
-    // ПОКАЗАТЬ ПРОДУКТЫ КАТЕГОРИИ
-    // ====================================================================
-    public async Task ShowItemsByCategoryAsync(UserData user, long chatId, string category, CancellationToken ct)
+    // ------------------------------------------------------------------
+    // Показ списка продуктов категории XE_CAT:CategoryName
+    // ------------------------------------------------------------------
+    public async Task HandleCallbackAsync(UserData user, CallbackQuery cb, CancellationToken ct)
     {
-        if (!_foods.TryGetValue(category, out var items))
+        if (cb.Data == null)
+            return;
+
+        // Категория
+        if (cb.Data.StartsWith("XE_CAT:"))
         {
-            await _bot.SendMessage(chatId, "Ошибка данных.", cancellationToken: ct);
+            string category = cb.Data.Replace("XE_CAT:", "");
+            await ShowProductsAsync(user, cb.Message!.Chat.Id, category, ct);
             return;
         }
 
-        var buttons = items.Select(i =>
-            InlineKeyboardButton.WithCallbackData(
-                $"{(user.Language == "kz" ? i.NameKk : i.NameRu)} ({i.GramsPerXE} г = 1 ХЕ)",
-                $"xe_item:{i.Id}"
-            )
-        ).ToArray();
+        // Продукт
+        if (cb.Data.StartsWith("XE_PROD:"))
+        {
+            string productId = cb.Data.Replace("XE_PROD:", "");
+            await AskGramsAsync(user, cb.Message!.Chat.Id, productId, ct);
+            return;
+        }
 
-        var ik = new InlineKeyboardMarkup(buttons);
+        // Завершение ввода — игнор, работает в текстовой фазе
+    }
+
+    // ------------------------------------------------------------------
+    // Продукты категории
+    // ------------------------------------------------------------------
+    private async Task ShowProductsAsync(UserData user, long chatId, string category, CancellationToken ct)
+    {
+        if (!_foodsByCategory.TryGetValue(category, out var list))
+        {
+            await _bot.SendMessage(chatId, "Ошибка: категория пуста.", cancellationToken: ct);
+            return;
+        }
+
+        var buttons = list
+            .Select(f =>
+                InlineKeyboardButton.WithCallbackData(
+                    user.Language == "kz" ? f.NameKk : f.NameRu,
+                    $"XE_PROD:{f.Id}"))
+            .Chunk(1)
+            .Select(r => r.ToArray())
+            .ToArray();
+
+        var kb = new InlineKeyboardMarkup(buttons);
 
         await _bot.SendMessage(chatId,
-            $"Категория: {category}",
-            replyMarkup: ik,
+            user.Language == "kz" ? "Өнім таңдаңыз:" : "Выберите продукт:",
+            replyMarkup: kb,
             cancellationToken: ct);
     }
 
-    // ====================================================================
-    // ВЫБОР ПРОДУКТА
-    // ====================================================================
-    public async Task SelectItemAsync(UserData user, long chatId, string itemId, CancellationToken ct)
+    // ------------------------------------------------------------------
+    // Просим граммы
+    // ------------------------------------------------------------------
+    private async Task AskGramsAsync(UserData user, long chatId, string productId, CancellationToken ct)
     {
-        var item = _foods.Values.SelectMany(x => x).FirstOrDefault(x => x.Id == itemId);
+        _tempState.TempProductId = productId;
 
-        if (item == null)
-        {
-            await _bot.SendMessage(chatId, "Ошибка.", cancellationToken: ct);
-            return;
-        }
-
-        user.SelectedFood = item;
         user.Phase = BotPhase.BreadUnits_EnterGrams;
 
-        string name = user.Language == "kz" ? item.NameKk : item.NameRu;
-
         await _bot.SendMessage(chatId,
-            $"{name}\n1 ХЕ = {item.GramsPerXE} г.\nВведите граммы:",
+            user.Language == "kz" ? "Грамм санын енгізіңіз:" : "Введите количество граммов:",
             cancellationToken: ct);
     }
 
-    // ====================================================================
-    // ВВОД ГРАММ
-    // ====================================================================
-    public async Task HandleGramsInputAsync(UserData user, long chatId, string text, CancellationToken ct)
+    // ------------------------------------------------------------------
+    // Обработка ввода граммов (когда Phase == BreadUnits_EnterGrams)
+    // ------------------------------------------------------------------
+    public async Task HandleGramsAsync(UserData user, long chatId, string text, CancellationToken ct)
     {
-        if (user.SelectedFood == null)
+        if (!double.TryParse(text.Replace(",", "."),
+            NumberStyles.Any, CultureInfo.InvariantCulture, out double grams))
         {
             await _bot.SendMessage(chatId,
-                "Сначала выберите продукт через категории.",
+                user.Language == "kz" ? "Сан енгізіңіз!" : "Введите число!",
                 cancellationToken: ct);
-
-            user.Phase = BotPhase.BreadUnits;
-            await ShowMenuAsync(user, chatId, ct);
             return;
         }
 
-        if (!double.TryParse(text.Replace(",", "."), out var grams))
+        var product = JsonStorageService.LoadFoods()!
+            .FirstOrDefault(f => f.Id == _tempState.TempProductId);
+
+        if (product == null)
         {
-            await _bot.SendMessage(chatId, "Введите число грамм.", cancellationToken: ct);
+            await _bot.SendMessage(chatId, "Ошибка: продукт не найден.", cancellationToken: ct);
             return;
         }
 
-        var item = user.SelectedFood;
-        double xe = grams / item.GramsPerXE;
+        double xe = grams / product.GramsPerXE;
 
         var record = new XeRecord
         {
-            ProductId = item.Id,
+            ProductId = product.Id,
+            ProductName = user.Language == "kz" ? product.NameKk : product.NameRu,
             Grams = grams,
             XE = xe,
             Time = DateTime.UtcNow
         };
 
-        user.XeHistory.Add(record);
         user.BreadUnits.Add(record);
-
-        user.Phase = BotPhase.BreadUnits;
-
-        string name = user.Language == "kz" ? item.NameKk : item.NameRu;
+        StateStore.SaveToFile(user);
 
         await _bot.SendMessage(chatId,
-            $"Записано: {xe:0.00} ХЕ ({grams} г {name})",
+            $"{record.ProductName}: {record.Grams} г → {record.XE:0.0} ХЕ\n" +
+            (user.Language == "kz" ? "Сақталды!" : "Сохранено!"),
             cancellationToken: ct);
 
+        user.Phase = BotPhase.BreadUnits;
         await ShowMenuAsync(user, chatId, ct);
+    }
+
+    // ------------------------------------------------------------------
+    // История ХЕ
+    // ------------------------------------------------------------------
+    private async Task SendHistoryAsync(UserData user, long chatId, CancellationToken ct)
+    {
+        if (user.BreadUnits.Count == 0)
+        {
+            await _bot.SendMessage(chatId,
+                user.Language == "kz" ? "Тарих бос." : "История пуста.",
+                cancellationToken: ct);
+            return;
+        }
+
+        var msg = string.Join("\n",
+            user.BreadUnits
+                .OrderByDescending(r => r.Time)
+                .Take(10)
+                .Select(r =>
+                {
+                    var t = r.Time.ToLocalTime();
+                    return $"{t:dd.MM HH:mm} — {r.ProductName} — {r.Grams:0} г → {r.XE:0.0} ХЕ";
+                }));
+
+        await _bot.SendMessage(chatId, msg, cancellationToken: ct);
     }
 }
