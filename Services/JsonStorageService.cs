@@ -129,22 +129,24 @@ public class JsonStorageService
     // -----------------------------------------------------------
 
     public List<FoodItem> LoadFoodItems()
-    {
-        string path = Path.Combine(UsersDir, "foods.json");
+{
+    string path = Path.Combine(DataDir, "foods.json");
 
-        if (!File.Exists(path))
-            throw new FileNotFoundException("foods.json NOT FOUND: " + path);
+    if (!File.Exists(path))
+        throw new FileNotFoundException("foods.json NOT FOUND: " + path);
 
-        return JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(path))!;
-    }
-
-    public Dictionary<string, List<string>> LoadFoodCategories()
-    {
-        string path = Path.Combine(UsersDir, "food_categories.json");
-
-        if (!File.Exists(path))
-            throw new FileNotFoundException("food_categories.json NOT FOUND: " + path);
-
-        return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path))!;
-    }
+    return JsonSerializer.Deserialize<List<FoodItem>>(File.ReadAllText(path))!;
 }
+
+public Dictionary<string, List<string>> LoadFoodCategories()
+{
+    string path = Path.Combine(DataDir, "food_categories.json");
+
+    if (!File.Exists(path))
+        throw new FileNotFoundException("food_categories.json NOT FOUND: " + path);
+
+    return JsonSerializer.Deserialize<Dictionary<string, List<string>>>(File.ReadAllText(path))!;
+}
+
+}
+
