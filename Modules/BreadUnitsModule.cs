@@ -199,7 +199,7 @@ public class BreadUnitsModule
         };
 
         user.BreadUnits.Add(record);
-        StateStore.SaveToFile(user);
+        StateStore.Save(user);
 
         await _bot.SendMessage(chatId,
             $"{record.ProductName}: {record.Grams} г → {record.XE:0.0} ХЕ\n" +
@@ -236,4 +236,5 @@ public class BreadUnitsModule
         await _bot.SendMessage(chatId, msg, cancellationToken: ct);
     }
 }
+
 
