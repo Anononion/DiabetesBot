@@ -84,15 +84,6 @@ public class CallbackHandler
         }
 
         // ============================
-        // ГЛЮКОЗА (типы измерений)
-        // ============================
-        if (data.StartsWith("GLU_TYPE"))
-        {
-            await _glucose.HandleCallbackAsync(user, cb, ct);
-            return;
-        }
-
-        // ============================
         // ХЛЕБНЫЕ ЕДИНИЦЫ (XE)
         // ============================
         if (data.StartsWith("BU_CAT"))
@@ -126,4 +117,5 @@ public class CallbackHandler
             Text = text
         };
 }
+
 
